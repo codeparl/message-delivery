@@ -1,10 +1,34 @@
 <?php
 
-namespace Schoolpalm\MessageDelivery\Channels;
+declare(strict_types=1);
 
-class PushChannel
+namespace SchoolPalm\MessageDelivery\Channels;
+
+use SchoolPalm\MessageDelivery\Contracts\MessageProvider;
+use SchoolPalm\MessageDelivery\Messages\DeliveryResult;
+use SchoolPalm\MessageDelivery\Messages\Message;
+
+final class PushChannel extends Channel
 {
-    public function send(array $message)
+    /**
+     * Get channel name.
+     */
+    public function name(): string
     {
+        return 'push';
+    }
+
+
+    /**
+     * Send push notification.
+     */
+    public function send(
+        Message $message,
+        MessageProvider $provider
+    ): DeliveryResult {
+
+        return $provider->send(
+            $message
+        );
     }
 }

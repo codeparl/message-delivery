@@ -1,10 +1,34 @@
 <?php
 
-namespace Schoolpalm\MessageDelivery\Channels;
+declare(strict_types=1);
 
-class SmsChannel
+namespace SchoolPalm\MessageDelivery\Channels;
+
+use SchoolPalm\MessageDelivery\Contracts\MessageProvider;
+use SchoolPalm\MessageDelivery\Messages\DeliveryResult;
+use SchoolPalm\MessageDelivery\Messages\Message;
+
+final class SmsChannel extends Channel
 {
-    public function send(array $message)
+    /**
+     * Get channel name.
+     */
+    public function name(): string
     {
+        return 'sms';
+    }
+
+
+    /**
+     * Send SMS message.
+     */
+    public function send(
+        Message $message,
+        MessageProvider $provider
+    ): DeliveryResult {
+
+        return $provider->send(
+            $message
+        );
     }
 }
