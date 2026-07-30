@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "db64e91a5a306ff39e547d70b60d7532",
+    "content-hash": "2fe3f4057bfb1cbbe9e21885db9dbf56",
     "packages": [
         {
             "name": "brick/math",
@@ -3096,6 +3096,68 @@
                 "source": "https://github.com/ramsey/uuid/tree/4.9.3"
             },
             "time": "2026-06-18T03:57:49+00:00"
+        },
+        {
+            "name": "schoolpalm/app-logger",
+            "version": "1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/codeparl/app-logger.git",
+                "reference": "ac19414634aceba9276f933898c36c07f9b55212"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/codeparl/app-logger/zipball/ac19414634aceba9276f933898c36c07f9b55212",
+                "reference": "ac19414634aceba9276f933898c36c07f9b55212",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/support": "^10.0|^11.0|^12.0",
+                "php": "^8.2"
+            },
+            "require-dev": {
+                "laravel/pint": "^1.13",
+                "mockery/mockery": "^1.6",
+                "orchestra/testbench": "^8.0|^9.0|^10.0",
+                "pestphp/pest": "^3.8",
+                "pestphp/pest-plugin-laravel": "^3.2",
+                "phpunit/phpunit": "^11.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "AppLogger": "SchoolPalm\\AppLogger\\Facades\\AppLogger"
+                    },
+                    "providers": [
+                        "SchoolPalm\\AppLogger\\AppLoggerServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "SchoolPalm\\AppLogger\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "A Laravel package for application logging with database and file drivers.",
+            "homepage": "https://github.com/codeparl/app-logger",
+            "keywords": [
+                "Audit",
+                "application-logging",
+                "laravel",
+                "logger",
+                "logging",
+                "multi-tenant"
+            ],
+            "support": {
+                "issues": "https://github.com/codeparl/app-logger/issues",
+                "source": "https://github.com/codeparl/app-logger/tree/v1.0.0"
+            },
+            "time": "2026-07-21T20:29:42+00:00"
         },
         {
             "name": "schoolpalm/queued-jobs",

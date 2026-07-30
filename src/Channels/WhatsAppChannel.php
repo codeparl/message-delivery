@@ -20,12 +20,19 @@ final class WhatsAppChannel extends Channel
 
 
     /**
-     * Send WhatsApp message.
+     * Send WhatsApp message through resolved provider.
+     *
+     * @param Message $message
+     * @param MessageProvider $provider
+     *
+     * @return DeliveryResult
      */
     public function send(
         Message $message,
         MessageProvider $provider
     ): DeliveryResult {
+
+        $this->validateProvider($provider);
 
         return $provider->send(
             $message

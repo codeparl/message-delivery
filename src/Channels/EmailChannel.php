@@ -20,12 +20,19 @@ final class EmailChannel extends Channel
 
 
     /**
-     * Send email message.
+     * Send email message through resolved provider.
+     *
+     * @param Message $message
+     * @param MessageProvider $provider
+     *
+     * @return DeliveryResult
      */
     public function send(
         Message $message,
         MessageProvider $provider
     ): DeliveryResult {
+
+        $this->validateProvider($provider);
 
         return $provider->send(
             $message

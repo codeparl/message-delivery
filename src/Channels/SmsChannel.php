@@ -20,12 +20,19 @@ final class SmsChannel extends Channel
 
 
     /**
-     * Send SMS message.
+     * Send SMS message through resolved provider.
+     *
+     * @param Message $message
+     * @param MessageProvider $provider
+     *
+     * @return DeliveryResult
      */
     public function send(
         Message $message,
         MessageProvider $provider
     ): DeliveryResult {
+
+        $this->validateProvider($provider);
 
         return $provider->send(
             $message

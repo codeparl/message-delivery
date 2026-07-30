@@ -6,14 +6,14 @@ namespace SchoolPalm\MessageDelivery\Contracts;
 
 use SchoolPalm\MessageDelivery\Messages\DeliveryResult;
 use SchoolPalm\MessageDelivery\Messages\Message;
-use SchoolPalm\MessageDelivery\Contracts\MessageProvider;
 
 interface MessageChannel
 {
     /**
-     * Get channel name.
+     * Get channel identifier.
      *
-     * Example:
+     * Examples:
+     *
      * sms
      * email
      * push
@@ -23,10 +23,32 @@ interface MessageChannel
 
 
     /**
-     * Send message through provider.
+     * Send message through this channel.
+     *
+     * The provider has already been resolved
+     * by ProviderManager.
      */
     public function send(
         Message $message,
         MessageProvider $provider
     ): DeliveryResult;
+
+
+    /**
+     * Determine whether channel supports
+     * a given provider.
+     *
+     * Example:
+     *
+     * Email channel:
+     * - ses
+     * - mailgun
+     *
+     * SMS channel:
+     * - egosms
+     * - africastalking
+     */
+    public function supports(
+        MessageProvider $provider
+    ): bool;
 }

@@ -14,10 +14,10 @@ interface MessageProvider
      *
      * Example:
      *
+     * egosms
      * ses
      * mailgun
-     * egosms
-     * twilio
+     * firebase
      */
     public function name(): string;
 
@@ -27,8 +27,8 @@ interface MessageProvider
      *
      * Example:
      *
-     * email
      * sms
+     * email
      * push
      * whatsapp
      */
@@ -36,7 +36,16 @@ interface MessageProvider
 
 
     /**
-     * Send message.
+     * Send message through provider.
+     *
+     * The provider is responsible for:
+     *
+     * - API communication
+     * - authentication
+     * - request formatting
+     * - response handling
+     *
+     * It must return a DeliveryResult.
      */
     public function send(
         Message $message
@@ -44,9 +53,19 @@ interface MessageProvider
 
 
     /**
-     * Check whether provider is configured.
+     * Determine whether provider
+     * has valid configuration.
      *
-     * Used when resolving tenant providers.
+     * Example:
+     *
+     * SMS provider:
+     * - api_url
+     * - username
+     * - password
+     *
+     * Email provider:
+     * - api_key
+     * - region
      */
     public function configured(): bool;
 
@@ -54,11 +73,24 @@ interface MessageProvider
     /**
      * Get provider metadata.
      *
-     * Useful for:
+     * Used by:
      *
-     * - dashboard display
      * - provider discovery
+     * - admin settings UI
      * - logging
+     * - diagnostics
+     *
+     * Example:
+     *
+     * [
+     *     'name' => 'egosms',
+     *     'label' => 'EgoSMS',
+     *     'channel' => 'sms',
+     *     'capabilities' => [
+     *          'unicode',
+     *          'delivery_reports'
+     *     ]
+     * ]
      */
     public function metadata(): array;
 }

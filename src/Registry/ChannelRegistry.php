@@ -19,12 +19,25 @@ final class ChannelRegistry
 
     /**
      * Register a channel.
+     *
+     * @throws InvalidArgumentException
      */
     public function register(
         MessageChannel $channel
     ): void {
 
-        $this->channels[$channel->name()] = $channel;
+        $name = $channel->name();
+
+
+        if ($this->has($name)) {
+
+            throw new InvalidArgumentException(
+                "Message channel [{$name}] is already registered."
+            );
+        }
+
+
+        $this->channels[$name] = $channel;
     }
 
 
@@ -63,6 +76,19 @@ final class ChannelRegistry
 
 
     /**
+     * Get a registered channel.
+     *
+     * Alias of resolve().
+     */
+    public function get(
+        string $name
+    ): MessageChannel {
+
+        return $this->resolve($name);
+    }
+
+
+    /**
      * Get all registered channels.
      *
      * @return array<string, MessageChannel>
@@ -83,5 +109,14 @@ final class ChannelRegistry
         unset(
             $this->channels[$name]
         );
+    }
+
+
+    /**
+     * Clear all channels.
+     */
+    public function clear(): void
+    {
+        $this->channels = [];
     }
 }

@@ -54,13 +54,33 @@ final class MessageDelivery
 
 
     /**
+     * Create a multi-channel message builder (static entry point).
+     *
+     * Example:
+     *
+     * MessageDelivery::multi()
+     *     ->channels(['email', 'sms'])
+     *     ->to($parent)
+     *     ->text('Your child has been admitted')
+     *     ->send();
+     */
+    public static function multi(): MultiChannelMessageBuilder
+    {
+        return new MultiChannelMessageBuilder(
+            channels: [],
+            context: [],
+        );
+    }
+
+
+    /**
      * Create an SMS message builder.
      */
     public function sms(): ChannelMessageBuilder
     {
         return new ChannelMessageBuilder(
             channel: 'sms',
-            context: $this->context
+            context: $this->context?->all() ?? []
         );
     }
 
@@ -72,7 +92,7 @@ final class MessageDelivery
     {
         return new ChannelMessageBuilder(
             channel: 'email',
-            context: $this->context
+            context: $this->context?->all() ?? []
         );
     }
 
@@ -84,7 +104,7 @@ final class MessageDelivery
     {
         return new ChannelMessageBuilder(
             channel: 'push',
-            context: $this->context
+            context: $this->context?->all() ?? []
         );
     }
 
@@ -96,13 +116,13 @@ final class MessageDelivery
     {
         return new ChannelMessageBuilder(
             channel: 'whatsapp',
-            context: $this->context
+            context: $this->context?->all() ?? []
         );
     }
 
 
     /**
-     * Create a multi-channel message builder.
+     * Create a multi-channel message builder with context.
      *
      * Example:
      *
@@ -121,7 +141,7 @@ final class MessageDelivery
 
         return new MultiChannelMessageBuilder(
             channels: $channels,
-            context: $this->context
+            context: $this->context?->all() ?? []
         );
     }
 }

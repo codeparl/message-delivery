@@ -1,109 +1,113 @@
 {
-  "name": "schoolpalm/message-delivery",
-  "description": "A message delivery package supporting email, sms, push and whatsapp providers for Laravel packages.",
-  "type": "library",
-  "license": "MIT",
-  "version": "1.0.0",
-  "keywords": [
-    "laravel",
-    "message",
-    "delivery",
-    "email",
-    "sms",
-    "push",
-    "whatsapp",
-    "schoolpalm",
-    "messaging",
-    "providers"
-  ],
-  "authors": [
-    {
-      "name": "Mugabo Hassan",
-      "email": "dybarox@gmail.com",
-      "homepage": "https://schoolpalm.com",
-      "role": "Developer"
-    }
-  ],
-  "support": {
-    "email": "support@schoolpalm.com",
-    "issues": "https://github.com/schoolpalm/message-delivery/issues",
-    "source": "https://github.com/schoolpalm/message-delivery"
-  },
-  "funding": [
-    {
-      "type": "other",
-      "url": "https://schoolpalm.com"
-    }
-  ],
-  "require": {
-    "php": "^8.2",
-    "illuminate/mail": "^12.0",
-    "illuminate/queue": "^12.0",
-    "illuminate/support": "^12.0",
-    "schoolpalm/queued-jobs": "^1.0"
-  },
-  "require-dev": {
-    "laravel/pint": "^1.13",
-    "orchestra/testbench": "^9.0|^10.0",
-    "phpunit/phpunit": "^11.0",
-    "mockery/mockery": "^1.6",
-    "pestphp/pest": "^3.8",
-    "pestphp/pest-plugin-laravel": "^3.2"
-  },
-  "suggest": {
-    "schoolpalm/cache-store": "Recommended when providers need context-aware caching during execution."
-  },
-  "autoload": {
-    "psr-4": {
-      "SchoolPalm\\MessageDelivery\\": "src/"
-    }
-  },
-  "autoload-dev": {
-    "psr-4": {
-      "SchoolPalm\\MessageDelivery\\Tests\\": "tests/",
-      "Workbench\\App\\": "workbench/app/",
-      "Workbench\\Database\\Factories\\": "workbench/database/factories/",
-      "Workbench\\Database\\Seeders\\": "workbench/database/seeders/"
-    }
-  },
-  "extra": {
-    "laravel": {
-      "providers": [
-        "SchoolPalm\\MessageDelivery\\MessageDeliveryServiceProvider"
-      ],
-      "aliases": {
-        "MessageDelivery": "SchoolPalm\\MessageDelivery\\Facades\\MessageDelivery"
-      }
-    }
-  },
-  "scripts": {
-    "post-autoload-dump": [
-      "@clear",
-      "@prepare"
+    "name": "schoolpalm/message-delivery",
+    "description": "A message delivery package supporting email, sms, push and whatsapp providers for Laravel packages.",
+    "type": "library",
+    "license": "MIT",
+    "version": "1.0.0",
+    "keywords": [
+        "laravel",
+        "message",
+        "delivery",
+        "email",
+        "sms",
+        "push",
+        "whatsapp",
+        "schoolpalm",
+        "messaging",
+        "providers"
     ],
-    "clear": "@php vendor/bin/testbench package:purge-skeleton --ansi",
-    "prepare": "@php vendor/bin/testbench package:discover --ansi",
-    "build": "@php vendor/bin/testbench workbench:build --ansi",
-    "serve": [
-      "Composer\\Config::disableProcessTimeout",
-      "@build",
-      "@php vendor/bin/testbench serve --ansi"
+    "authors": [
+        {
+            "name": "Mugabo Hassan",
+            "email": "dybarox@gmail.com",
+            "homepage": "https://schoolpalm.com",
+            "role": "Developer"
+        }
     ],
-    "test": [
-      "@clear",
-      "@php vendor/bin/pest"
-    ],
-    "lint": [
-      "@php vendor/bin/pint --ansi"
-    ]
-  },
-  "config": {
-    "allow-plugins": {
-      "pestphp/pest-plugin": true
+    "support": {
+        "email": "support@schoolpalm.com",
+        "issues": "https://github.com/schoolpalm/message-delivery/issues",
+        "source": "https://github.com/schoolpalm/message-delivery"
     },
-    "sort-packages": true,
-    "optimize-autoloader": true
-  },
-  "minimum-stability": "stable",
-  "prefer-stable": true
+    "funding": [
+        {
+            "type": "other",
+            "url": "https://schoolpalm.com"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/mail": "^12.0",
+        "illuminate/queue": "^12.0",
+        "illuminate/support": "^12.0",
+        "schoolpalm/app-logger": "^1.0",
+        "schoolpalm/queued-jobs": "^1.0"
+    },
+    "require-dev": {
+        "laravel/pint": "^1.13",
+        "orchestra/testbench": "^9.0|^10.0",
+        "phpunit/phpunit": "^11.0",
+        "mockery/mockery": "^1.6",
+        "pestphp/pest": "^3.8",
+        "pestphp/pest-plugin-laravel": "^3.2"
+    },
+    "suggest": {
+        "schoolpalm/cache-store": "Recommended when providers need context-aware caching during execution."
+    },
+    "autoload": {
+        "psr-4": {
+            "SchoolPalm\\MessageDelivery\\": "src/"
+        },
+        "exclude-from-classmap": [
+            "src/Database/migrations/"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "SchoolPalm\\MessageDelivery\\Tests\\": "tests/",
+            "Workbench\\App\\": "workbench/app/",
+            "Workbench\\Database\\Factories\\": "workbench/database/factories/",
+            "Workbench\\Database\\Seeders\\": "workbench/database/seeders/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "SchoolPalm\\MessageDelivery\\MessageDeliveryServiceProvider"
+            ],
+            "aliases": {
+                "MessageDelivery": "SchoolPalm\\MessageDelivery\\Facades\\MessageDelivery"
+            }
+        }
+    },
+    "scripts": {
+        "post-autoload-dump": [
+            "@clear",
+            "@prepare"
+        ],
+        "clear": "@php vendor/bin/testbench package:purge-skeleton --ansi",
+        "prepare": "@php vendor/bin/testbench package:discover --ansi",
+        "build": "@php vendor/bin/testbench workbench:build --ansi",
+        "serve": [
+            "Composer\\Config::disableProcessTimeout",
+            "@build",
+            "@php vendor/bin/testbench serve --ansi"
+        ],
+        "test": [
+            "@clear",
+            "@php vendor/bin/pest"
+        ],
+        "lint": [
+            "@php vendor/bin/pint --ansi"
+        ]
+    },
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        },
+        "sort-packages": true,
+        "optimize-autoloader": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
 }
