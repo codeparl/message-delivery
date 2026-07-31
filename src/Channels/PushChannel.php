@@ -20,7 +20,7 @@ final class PushChannel extends Channel
 
 
     /**
-     * Send push message through resolved provider.
+     * Send push notification through resolved provider.
      *
      * @param Message $message
      * @param MessageProvider $provider

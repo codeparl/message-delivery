@@ -1,0 +1,102 @@
+﻿
+   PASS  Tests\Feature\DeliveryTrackingTest
+  Γ£ô it creates queued delivery record              0.41s  
+  Γ£ô it updates successful delivery record          0.08s  
+  Γ£ô it stores failed delivery                      0.04s  
+  Γ£ô it stores channel and provider                 0.06s  
+  Γ£ô it stores metadata                             0.06s  
+  Γ£ô it writes app logger event for queued deliverΓÇª 0.06s  
+  Γ£ô it writes app logger event for successful delΓÇª 0.05s  
+  Γ£ô it writes app logger event for failed deliverΓÇª 0.05s  
+
+   PASS  Tests\Feature\EmailDeliveryTest
+  Γ£ô it can resolve provider from factory           0.07s  
+  Γ£ô it email channel delegates to provider         0.07s  
+  Γ£ô it sends email and returns success delivery rΓÇª 0.04s  
+  Γ£ô it laravel mail receives the mailable with coΓÇª 0.04s  
+  Γ£ô it returns not configured when mailer is missΓÇª 0.04s  
+  Γ£ô it returns not configured when mailer key isΓÇª  0.03s  
+  Γ£ô it returns not configured when mailer is emptΓÇª 0.04s  
+  Γ£ô it returns configured when valid mailer is prΓÇª 0.04s  
+  Γ£ô it sends email with html content               0.04s  
+  Γ£ô it sends email to multiple recipients          0.04s  
+  Γ£ô it supports cc recipients                      0.04s  
+  Γ£ô it supports bcc recipients                     0.07s  
+  Γ£ô it supports reply to address                   0.08s  
+  Γ£ô it supports file attachments                   0.05s  
+  Γ£ô it supports custom headers                     0.05s  
+  Γ£ô it sets priority header from message priority  0.05s  
+  Γ£ô it does not set priority when null             0.06s  
+
+   PASS  Tests\Feature\MailpitEmailDeliveryTest
+  Γ£ô it sends email successfully through mailpit SΓÇª 0.16s  
+  Γ£ô it sends html email that can be viewed in maiΓÇª 0.07s  
+
+   PASS  Tests\Feature\MessageDeliveryEmailTest
+  Γ£ô it sends email through public api              0.05s  
+  Γ£ô it sends email with subject via data array     0.05s  
+  Γ£ô it sends email with html content via text metΓÇª 0.05s  
+  Γ£ô it sends email using view template             0.05s  
+  Γ£ô it sends email to multiple recipients throughΓÇª 0.05s  
+  Γ£ô it queues email and returns queued status      0.04s  
+  Γ£ô it passes queue options through the public apΓÇª 0.06s  
+
+   PASS  Tests\Feature\MessageDeliverySmsTest
+  Γ£ô it sends sms through public api                0.11s  
+  Γ£ô it sends sms with text content                 0.05s  
+  Γ£ô it sends sms to multiple recipients through pΓÇª 0.05s  
+  Γ£ô it sends sms with provider override            0.05s  
+  Γ£ô it sends sms with priority                     0.05s  
+  Γ£ô it queues sms and returns queued status        0.05s  
+  Γ£ô it passes queue options through the public apΓÇª 0.04s  
+  Γ£ô it propagates context through sms delivery     0.05s  
+  Γ£ô it supports provider override to switch betweΓÇª 0.06s  
+
+   PASS  Tests\Feature\MultiChannelMessageBuilderTest
+  Γ£ô it sends message through multiple channels     0.07s  
+  Γ£ô it returns individual channel results          0.05s  
+  Γ£ô it one channel failure does not stop others    0.05s  
+  Γ£ô it queues multiple channel messages            0.05s  
+  Γ£ô it shared data is passed to all channels       0.05s  
+
+   PASS  Tests\Feature\Sms\AfricasTalkingProviderTest
+  Γ£ô it africas talking sends sms and returns succΓÇª 0.05s  
+  Γ£ô it africas talking sends to multiple recipienΓÇª 0.04s  
+  Γ£ô it africas talking supports unicode characterΓÇª 0.04s  
+  Γ£ô it africas talking sends correct http request  0.04s  
+  Γ£ô it africas talking sends correct authenticatiΓÇª 0.04s  
+
+   PASS  Tests\Feature\Sms\EgoSmsProviderTest
+  Γ£ô it egosms sends sms and returns success delivΓÇª 0.05s  
+  Γ£ô it egosms sends to multiple recipients         0.03s  
+  Γ£ô it egosms supports unicode characters          0.04s  
+  Γ£ô it egosms sends correct http request           0.04s  
+
+   PASS  Tests\Feature\Sms\ProviderResolutionTest
+  Γ£ô it egosms resolves provider from factory       0.05s  
+  Γ£ô it twilio resolves provider from factory       0.04s  
+  Γ£ô it africas talking resolves provider from facΓÇª 0.03s  
+
+   PASS  Tests\Feature\Sms\SmsAdvancedTest
+  Γ£ô it returns delivery result with correct statuΓÇª 0.04s  
+
+   PASS  Tests\Feature\Sms\SmsChannelTest
+  Γ£ô it sms channel delegates to egosms provider    0.04s  
+  Γ£ô it sms channel delegates to twilio provider    0.04s  
+  Γ£ô it sms channel delegates to africas talking pΓÇª 0.04s  
+  Γ£ô it sms channel supports provider override      0.04s  
+  Γ£ô it sms channel supports priority               0.04s  
+  Γ£ô it sms channel supports metadata               0.04s  
+  Γ£ô it sms channel throws exception for incompatiΓÇª 0.04s  
+
+   PASS  Tests\Feature\Sms\SmsConfigurationTest
+  Γ£ô it egosms returns not configured when requireΓÇª 0.05s  
+  Γ£ô it egosms returns not configured when api_urlΓÇª 0.04s  
+  Γ£ô it egosms returns configured when all fieldsΓÇª  0.03s  
+  Γ£ô it twilio returns not configured when sid isΓÇª  0.03s  
+  Γ£ô it twilio returns not configured when token iΓÇª 0.04s  
+  Γ£ô it twilio returns configured when all fieldsΓÇª  0.04s  
+  Γ£ô it twilio returns not configured when from isΓÇª 0.04s  
+  Γ£ô it africas talking returns not configured wheΓÇª 0.04s  
+  Γ£ô it africas talking returns not configured wheΓÇª 0.04s  
+  Γ£ô it africas talking returns configured when alΓÇª 0.04s  

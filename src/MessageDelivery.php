@@ -7,6 +7,8 @@ namespace SchoolPalm\MessageDelivery;
 use SchoolPalm\MessageDelivery\Builders\ChannelMessageBuilder;
 use SchoolPalm\MessageDelivery\Builders\MultiChannelMessageBuilder;
 use SchoolPalm\MessageDelivery\Context\MessageContext;
+use SchoolPalm\MessageDelivery\Providers\ProviderDefinition;
+use SchoolPalm\MessageDelivery\Registry\DefinitionRegistry;
 
 final class MessageDelivery
 {
@@ -50,6 +52,48 @@ final class MessageDelivery
         }
 
         return new self($context);
+    }
+
+
+    /**
+     * Get a provider definition by name.
+     *
+     * Example:
+     *
+     * MessageDelivery::definition('twilio-sms')
+     *     ->configurationFields();
+     *
+     * @throws \InvalidArgumentException
+     */
+    public static function definition(string $name): ProviderDefinition
+    {
+        return app(DefinitionRegistry::class)->get($name);
+    }
+
+
+    /**
+     * Get all registered provider definitions.
+     *
+     * @return array<string, ProviderDefinition>
+     */
+    public static function definitions(): array
+    {
+        return app(DefinitionRegistry::class)->all();
+    }
+
+
+    /**
+     * Get all provider definitions for a specific channel.
+     *
+     * Example:
+     *
+     * MessageDelivery::providers('sms')
+     *
+     * @return array<string, ProviderDefinition>
+     */
+    public static function providers(string $channel): array
+    {
+        return app(DefinitionRegistry::class)->forChannel($channel);
     }
 
 

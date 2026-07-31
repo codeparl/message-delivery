@@ -1,0 +1,7 @@
+﻿
+   PASS  Tests\Feature\Sms\SmsFailureTest
+  Γ£ô it handles timeout gracefully                  0.32s  
+
+  Tests:    1 passed (3 assertions)
+  Duration: 0.70s
+

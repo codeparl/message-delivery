@@ -8,6 +8,8 @@ use InvalidArgumentException;
 use SchoolPalm\MessageDelivery\Contracts\MessageProvider;
 use SchoolPalm\MessageDelivery\Contracts\TenantProviderSettings;
 use SchoolPalm\MessageDelivery\Messages\Message;
+use SchoolPalm\MessageDelivery\Providers\ProviderDefinition;
+use SchoolPalm\MessageDelivery\Registry\DefinitionRegistry;
 use SchoolPalm\MessageDelivery\Registry\ProviderRegistry;
 
 final class ProviderManager
@@ -16,6 +18,8 @@ final class ProviderManager
         protected ProviderRegistry $providerRegistry,
 
         protected TenantProviderSettings $settings,
+
+        protected DefinitionRegistry $definitionRegistry,
     ) {}
 
 
@@ -71,5 +75,38 @@ final class ProviderManager
             $provider,
             $configuration
         );
+    }
+
+
+    /**
+     * Get a provider definition by name.
+     *
+     * @throws InvalidArgumentException
+     */
+    public function definition(string $name): ProviderDefinition
+    {
+        return $this->definitionRegistry->get($name);
+    }
+
+
+    /**
+     * Get all registered provider definitions.
+     *
+     * @return array<string, ProviderDefinition>
+     */
+    public function definitions(): array
+    {
+        return $this->definitionRegistry->all();
+    }
+
+
+    /**
+     * Get all provider definitions for a specific channel.
+     *
+     * @return array<string, ProviderDefinition>
+     */
+    public function providersForChannel(string $channel): array
+    {
+        return $this->definitionRegistry->forChannel($channel);
     }
 }
