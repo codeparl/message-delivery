@@ -1,8 +1,0 @@
-[req]
-distinguished_name = req_distinguished_name
-prompt = no
-[req_distinguished_name]
-CN = Test Key
-[CA_default]
-default_md = sha256
-
