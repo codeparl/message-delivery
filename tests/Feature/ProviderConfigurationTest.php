@@ -474,7 +474,7 @@ it('returns definitions filtered by channel via facade', function (): void {
 });
 
 it('returns empty for unregistered channel', function (): void {
-    $providers = MessageDelivery::providers('push');
+    $providers = MessageDelivery::providers('nonexistent');
 
     expect($providers)->toBeArray()->toBeEmpty();
 });

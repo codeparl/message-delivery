@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SchoolPalm\MessageDelivery\Services;
 
 use SchoolPalm\MessageDelivery\Contracts\DeliveryRecorder;
+use SchoolPalm\MessageDelivery\Contracts\TenantProviderSettings;
 use SchoolPalm\MessageDelivery\Messages\DeliveryResult;
 use SchoolPalm\MessageDelivery\Messages\Message;
 use SchoolPalm\MessageDelivery\Models\MessageDelivery;
@@ -33,6 +34,16 @@ use SchoolPalm\MessageDelivery\Models\MessageDelivery;
 final class DatabaseDeliveryRecorder implements DeliveryRecorder
 {
     /**
+     * Create a new DatabaseDeliveryRecorder instance.
+     *
+     * @param  TenantProviderSettings|null  $settings  Optional tenant settings used to resolve provider names
+     */
+    public function __construct(
+        protected readonly ?TenantProviderSettings $settings = null,
+    ) {}
+
+
+    /**
      * Record a message as queued for delivery.
      *
      * Creates a new MessageDelivery record with:
@@ -48,7 +59,7 @@ final class DatabaseDeliveryRecorder implements DeliveryRecorder
 
         return MessageDelivery::create([
             'channel' => $message->channel,
-            'provider' => $message->provider ?? 'unknown',
+            'provider' => $this->resolveProvider($message),
             'recipient' => $this->resolveRecipient($message),
             'status' => 'queued',
             'subject' => $message->data['subject'] ?? null,
@@ -156,6 +167,32 @@ final class DatabaseDeliveryRecorder implements DeliveryRecorder
         return is_string($recipient)
             ? $recipient
             : (string) json_encode($recipient);
+    }
+
+
+    /**
+     * Resolve the provider name for a message.
+     *
+     * Priority:
+     * 1. Explicit provider set on the message
+     * 2. Provider resolved from TenantProviderSettings
+     * 3. Fallback to 'unknown'
+     *
+     * @param  Message  $message
+     * @return string
+     */
+    private function resolveProvider(Message $message): string
+    {
+        if ($message->provider !== null) {
+            return $message->provider;
+        }
+
+        if ($this->settings !== null) {
+            return $this->settings->providerFor($message->channel)
+                ?? 'unknown';
+        }
+
+        return 'unknown';
     }
 
 

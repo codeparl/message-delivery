@@ -95,6 +95,24 @@ final class ChannelMessageBuilder
 
 
     /**
+     * Set message title.
+     *
+     * The title is stored in the message data array
+     * under the 'title' key. This is used by channels
+     * that support a title concept (e.g., in-app
+     * notifications, push notifications).
+     */
+    public function title(
+        string $title
+    ): static {
+
+        $this->data['title'] = $title;
+
+        return $this;
+    }
+
+
+    /**
      * Add template variables.
      */
     public function with(

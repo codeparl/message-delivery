@@ -52,6 +52,10 @@ final class MultiChannelMessageBuilder
 
     protected ?string $priority = null;
 
+    protected array $context = [];
+
+    protected QueueOptionsBuilder $queueOptions;
+
     /**
      * Create a MultiChannelMessageBuilder instance.
      *
@@ -60,9 +64,32 @@ final class MultiChannelMessageBuilder
      */
     public function __construct(
         array $channels = [],
-        protected readonly array $context = [],
+        array $context = [],
     ) {
         $this->channels = $channels;
+
+        $this->context = $context;
+
+        $this->queueOptions = new QueueOptionsBuilder();
+    }
+
+    /**
+     * Set execution context.
+     *
+     * Context is propagated to every channel builder.
+     *
+     * @param  array $context
+     * @return static
+     */
+    public function context(
+        array $context
+    ): static {
+        $this->context = array_merge(
+            $this->context,
+            $context
+        );
+
+        return $this;
     }
 
     /**
@@ -183,6 +210,104 @@ final class MultiChannelMessageBuilder
     }
 
     /**
+     * Set queue delay.
+     *
+     * @param  \DateInterval|\DateTimeInterface|int $delay
+     * @return static
+     */
+    public function delay(
+        \DateInterval|\DateTimeInterface|int $delay
+    ): static {
+        $this->queueOptions->delay($delay);
+
+        return $this;
+    }
+
+    /**
+     * Set queue name.
+     *
+     * @param  string $queue
+     * @return static
+     */
+    public function onQueue(
+        string $queue
+    ): static {
+        $this->queueOptions->onQueue($queue);
+
+        return $this;
+    }
+
+    /**
+     * Set queue connection.
+     *
+     * @param  string $connection
+     * @return static
+     */
+    public function onConnection(
+        string $connection
+    ): static {
+        $this->queueOptions->onConnection($connection);
+
+        return $this;
+    }
+
+    /**
+     * Set maximum retry attempts.
+     *
+     * @param  int $tries
+     * @return static
+     */
+    public function tries(
+        int $tries
+    ): static {
+        $this->queueOptions->tries($tries);
+
+        return $this;
+    }
+
+    /**
+     * Set job timeout.
+     *
+     * @param  int $seconds
+     * @return static
+     */
+    public function timeout(
+        int $seconds
+    ): static {
+        $this->queueOptions->timeout($seconds);
+
+        return $this;
+    }
+
+    /**
+     * Set retry backoff.
+     *
+     * @param  int|array $backoff
+     * @return static
+     */
+    public function backoff(
+        int|array $backoff
+    ): static {
+        $this->queueOptions->backoff($backoff);
+
+        return $this;
+    }
+
+    /**
+     * Dispatch after database commit.
+     *
+     * @param  bool $value
+     * @return static
+     */
+    public function afterCommit(
+        bool $value = true
+    ): static {
+        $this->queueOptions->afterCommit($value);
+
+        return $this;
+    }
+
+    /**
      * Send immediately through all channels.
      *
      * Dispatches to each channel sequentially.
@@ -285,7 +410,38 @@ final class MultiChannelMessageBuilder
             $builder->priority($this->priority);
         }
 
+        if ($this->queueOptions->hasConfig()) {
+            $options = $this->queueOptions->build();
+
+            if ($options->hasConnection()) {
+                $builder->onConnection($options->connection);
+            }
+
+            if ($options->hasQueue()) {
+                $builder->onQueue($options->queue);
+            }
+
+            if ($options->hasDelay()) {
+                $builder->delay($options->delay);
+            }
+
+            if ($options->hasTries()) {
+                $builder->tries($options->tries);
+            }
+
+            if ($options->hasTimeout()) {
+                $builder->timeout($options->timeout);
+            }
+
+            if ($options->backoff !== null) {
+                $builder->backoff($options->backoff);
+            }
+
+            if ($options->afterCommit) {
+                $builder->afterCommit();
+            }
+        }
+
         return $builder;
     }
 }
-

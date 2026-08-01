@@ -125,6 +125,21 @@ final class QueueOptionsBuilder
 
 
     /**
+     * Check whether any queue option has been configured.
+     */
+    public function hasConfig(): bool
+    {
+        return $this->delay !== null
+            || $this->connection !== null
+            || $this->queue !== null
+            || $this->tries !== null
+            || $this->timeout !== null
+            || $this->backoff !== null
+            || $this->afterCommit;
+    }
+
+
+    /**
      * Build immutable queue options.
      */
     public function build(): QueueOptions

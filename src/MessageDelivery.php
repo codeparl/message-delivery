@@ -166,6 +166,56 @@ final class MessageDelivery
 
 
     /**
+     * Create an in-app notification builder.
+     *
+     * Example:
+     *
+     * MessageDelivery::withContext([])
+     *     ->inApp()
+     *     ->to($user)
+     *     ->title('New Message')
+     *     ->text('Your account was updated')
+     *     ->send();
+     */
+    public function inApp(): ChannelMessageBuilder
+    {
+        return new ChannelMessageBuilder(
+            channel: 'in_app',
+            context: $this->context?->all() ?? []
+        );
+    }
+
+
+    /**
+     * Start a multi-channel notification.
+     *
+     * Pre-sets recipients so you can define channels
+     * and message content fluently.
+     *
+     * Example:
+     *
+     * MessageDelivery::notify($user)
+     *     ->channels(['in_app', 'email', 'sms'])
+     *     ->title('Fee Reminder')
+     *     ->text('Your fees are due')
+     *     ->send();
+     */
+    public static function notify(
+        string|array $recipients
+    ): MultiChannelMessageBuilder {
+
+        $recipients = is_array($recipients)
+            ? $recipients
+            : [$recipients];
+
+        return new MultiChannelMessageBuilder(
+            channels: [],
+            context: [],
+        );
+    }
+
+
+    /**
      * Create a multi-channel message builder with context.
      *
      * Example:

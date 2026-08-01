@@ -20,6 +20,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Notification Engine
+    |--------------------------------------------------------------------------
+    |
+    | Default language and priority used by the Notification Engine
+    | when resolvers do not provide a value.
+    |
+    */
+
+    'notification' => [
+
+        'default_language' => env(
+            'MESSAGE_DEFAULT_LANGUAGE',
+            'en'
+        ),
+
+        'default_priority' => env(
+            'MESSAGE_DEFAULT_PRIORITY',
+            'normal'
+        ),
+
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Delivery Tracking
     |--------------------------------------------------------------------------
     |

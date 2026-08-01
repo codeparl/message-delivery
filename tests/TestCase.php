@@ -117,7 +117,7 @@ abstract class TestCase extends OrchestraTestCase
     /**
      * Define database migrations.
      *
-     * Create the message_deliveries table directly
+     * Create the message_deliveries and notifications tables directly
      * since migration files under src/ conflict with
      * PSR-4 autoloading.
      *
@@ -154,6 +154,29 @@ abstract class TestCase extends OrchestraTestCase
                 $table->index('channel');
                 $table->index('status');
                 $table->index('created_at');
+            }
+        );
+
+        \Illuminate\Support\Facades\Schema::create(
+            'notifications',
+            function (\Illuminate\Database\Schema\Blueprint $table): void {
+                $table->uuid('id')->primary();
+
+                $table->string('notifiable_type');
+                $table->string('notifiable_id');
+                $table->index(['notifiable_type', 'notifiable_id']);
+
+                $table->string('title');
+                $table->text('body')->nullable();
+
+                $table->json('data')->nullable();
+
+                $table->string('channel')->nullable();
+                $table->string('provider')->nullable();
+
+                $table->timestamp('read_at')->nullable();
+
+                $table->timestamps();
             }
         );
     }

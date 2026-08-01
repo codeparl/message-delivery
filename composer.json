@@ -76,7 +76,8 @@
                 "SchoolPalm\\MessageDelivery\\MessageDeliveryServiceProvider"
             ],
             "aliases": {
-                "MessageDelivery": "SchoolPalm\\MessageDelivery\\Facades\\MessageDelivery"
+                "MessageDelivery": "SchoolPalm\\MessageDelivery\\Facades\\MessageDelivery",
+                "Notification": "SchoolPalm\\MessageDelivery\\Facades\\Notification"
             }
         }
     },
