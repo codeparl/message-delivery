@@ -17,7 +17,6 @@ final class MessageDelivery
      */
     private ?MessageContext $context;
 
-
     /**
      * Create a MessageDelivery instance.
      */
@@ -27,41 +26,39 @@ final class MessageDelivery
         $this->context = $context;
     }
 
-
     /**
-     * Attach execution context.
-     *
-     * Context is supplied by application adapters
-     * such as Module Bridge.
+     * Attach or replace execution context.
      *
      * Example:
-     *
-     * MessageDelivery::withContext([
-     *     'tenant_id' => 1,
-     *     'module' => 'finance'
-     * ])
-     * ->sms()
-     * ->send();
+     * MessageDelivery::withContext(['tenant_id' => 1])
      */
     public static function withContext(
         array|MessageContext $context
     ): self {
+        $contextInstance = $context instanceof MessageContext
+            ? $context
+            : new MessageContext($context);
 
-        if (is_array($context)) {
-            $context = new MessageContext($context);
-        }
-
-        return new self($context);
+        return new self($contextInstance);
     }
 
+    /**
+     * Merge additional context into the existing context instance.
+     *
+     * Example:
+     * $delivery->mergeContext(['school_id' => 10]);
+     */
+    public function mergeContext(
+        array|MessageContext $context
+    ): self {
+        $additional = $context instanceof MessageContext ? $context->all() : $context;
+        $current = $this->context?->all() ?? [];
+
+        return new self(new MessageContext(array_merge($current, $additional)));
+    }
 
     /**
      * Get a provider definition by name.
-     *
-     * Example:
-     *
-     * MessageDelivery::definition('twilio-sms')
-     *     ->configurationFields();
      *
      * @throws \InvalidArgumentException
      */
@@ -69,7 +66,6 @@ final class MessageDelivery
     {
         return app(DefinitionRegistry::class)->get($name);
     }
-
 
     /**
      * Get all registered provider definitions.
@@ -81,13 +77,8 @@ final class MessageDelivery
         return app(DefinitionRegistry::class)->all();
     }
 
-
     /**
      * Get all provider definitions for a specific channel.
-     *
-     * Example:
-     *
-     * MessageDelivery::providers('sms')
      *
      * @return array<string, ProviderDefinition>
      */
@@ -96,17 +87,8 @@ final class MessageDelivery
         return app(DefinitionRegistry::class)->forChannel($channel);
     }
 
-
     /**
      * Create a multi-channel message builder (static entry point).
-     *
-     * Example:
-     *
-     * MessageDelivery::multi()
-     *     ->channels(['email', 'sms'])
-     *     ->to($parent)
-     *     ->text('Your child has been admitted')
-     *     ->send();
      */
     public static function multi(): MultiChannelMessageBuilder
     {
@@ -115,7 +97,6 @@ final class MessageDelivery
             context: [],
         );
     }
-
 
     /**
      * Create an SMS message builder.
@@ -128,7 +109,6 @@ final class MessageDelivery
         );
     }
 
-
     /**
      * Create an email message builder.
      */
@@ -139,7 +119,6 @@ final class MessageDelivery
             context: $this->context?->all() ?? []
         );
     }
-
 
     /**
      * Create a push notification builder.
@@ -152,7 +131,6 @@ final class MessageDelivery
         );
     }
 
-
     /**
      * Create a WhatsApp message builder.
      */
@@ -164,18 +142,8 @@ final class MessageDelivery
         );
     }
 
-
     /**
      * Create an in-app notification builder.
-     *
-     * Example:
-     *
-     * MessageDelivery::withContext([])
-     *     ->inApp()
-     *     ->to($user)
-     *     ->title('New Message')
-     *     ->text('Your account was updated')
-     *     ->send();
      */
     public function inApp(): ChannelMessageBuilder
     {
@@ -185,54 +153,26 @@ final class MessageDelivery
         );
     }
 
-
     /**
-     * Start a multi-channel notification.
-     *
-     * Pre-sets recipients so you can define channels
-     * and message content fluently.
-     *
-     * Example:
-     *
-     * MessageDelivery::notify($user)
-     *     ->channels(['in_app', 'email', 'sms'])
-     *     ->title('Fee Reminder')
-     *     ->text('Your fees are due')
-     *     ->send();
+     * Start a multi-channel notification with pre-set recipients.
      */
     public static function notify(
         string|array $recipients
     ): MultiChannelMessageBuilder {
+        $recipients = is_array($recipients) ? $recipients : [$recipients];
 
-        $recipients = is_array($recipients)
-            ? $recipients
-            : [$recipients];
-
-        return new MultiChannelMessageBuilder(
+        return (new MultiChannelMessageBuilder(
             channels: [],
             context: [],
-        );
+        ))->to($recipients);
     }
-
 
     /**
      * Create a multi-channel message builder with context.
-     *
-     * Example:
-     *
-     * MessageDelivery::withContext([
-     *     'tenant_id'=>1
-     * ])
-     * ->channels([
-     *     'sms',
-     *     'email'
-     * ])
-     * ->send();
      */
     public function channels(
         array $channels
     ): MultiChannelMessageBuilder {
-
         return new MultiChannelMessageBuilder(
             channels: $channels,
             context: $this->context?->all() ?? []
