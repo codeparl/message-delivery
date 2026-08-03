@@ -28,9 +28,6 @@ final class MessageDelivery
 
     /**
      * Attach or replace execution context.
-     *
-     * Example:
-     * MessageDelivery::withContext(['tenant_id' => 1])
      */
     public static function withContext(
         array|MessageContext $context
@@ -43,10 +40,7 @@ final class MessageDelivery
     }
 
     /**
-     * Merge additional context into the existing context instance.
-     *
-     * Example:
-     * $delivery->mergeContext(['school_id' => 10]);
+     * Merge context dynamically (works both statically and fluently).
      */
     public function mergeContext(
         array|MessageContext $context
@@ -55,6 +49,27 @@ final class MessageDelivery
         $current = $this->context?->all() ?? [];
 
         return new self(new MessageContext(array_merge($current, $additional)));
+    }
+
+    /**
+     * Static entry point for merging context when no prior instance exists.
+     */
+    public static function appendContext(
+        array|MessageContext $context
+    ): self {
+        return static::withContext($context);
+    }
+
+    /**
+     * Forward static mergeContext calls or delegate dynamically via __callStatic.
+     */
+    public static function __callStatic(string $method, array $arguments): mixed
+    {
+        if ($method === 'mergeContext') {
+            return static::withContext(...$arguments);
+        }
+
+        throw new \BadMethodCallException("Call to undefined method " . static::class . "::{$method}()");
     }
 
     /**
