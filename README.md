@@ -31,7 +31,8 @@ A Laravel package for multi-channel message delivery supporting **Email**, **SMS
     - [Push Providers](#push-providers)
     - [Email Providers](#email-providers)
     - [In-App Provider](#in-app-provider)
-  - [Provider Definitions](#provider-definitions)
+- [Provider Definitions](#provider-definitions)
+    - [Provider Configuration Fields](#provider-configuration-fields)
   - [Provider Registry](#provider-registry)
   - [Delivery Tracking](#delivery-tracking)
   - [Events](#events)
@@ -554,6 +555,100 @@ $all = MessageDelivery::definitions();
 // Get definitions for a channel
 $smsProviders = MessageDelivery::providers('sms');
 ```
+
+---
+
+## Provider Configuration Fields
+
+The package exposes the **configuration schema** for every provider so your application can initialize provider settings in its own storage (e.g. a tenant settings scope). The package **does not persist** anything — it only returns the fields; you decide where and how to save them.
+
+Each field is a plain array with the canonical keys:
+
+| Key           | Type    | Description                                        |
+| ------------- | ------- | -------------------------------------------------- |
+| `name`        | string  | Field identifier (e.g. `api_key`)                  |
+| `label`       | string  | Human-readable label                               |
+| `type`        | string  | `text`, `password`, `select`, `boolean`, `number`… |
+| `required`    | bool    | Whether the field is mandatory                     |
+| `placeholder` | ?string | Input placeholder                                  |
+| `description` | ?string | Help text                                          |
+| `default`     | mixed   | Default value                                      |
+| `options`     | array   | Allowed values for `select` fields                 |
+| `secret`      | bool    | Whether the field contains sensitive data          |
+
+### Available APIs
+
+All are accessible via the `MessageDelivery` facade:
+
+```php
+use SchoolPalm\MessageDelivery\Facades\MessageDelivery;
+
+// Fields for a single provider as arrays
+$fields = MessageDelivery::providerConfigurationFields('twilio-sms');
+
+// Fields for a single provider as ConfigurationField objects
+$fieldObjects = MessageDelivery::providerFieldObjects('twilio-sms');
+
+// All providers, keyed by name → fields as arrays
+$all = MessageDelivery::allProviderConfigurationFields();
+
+// Providers for a channel → fields as arrays
+$sms = MessageDelivery::providerConfigurationFieldsForChannel('sms');
+$email = MessageDelivery::providerConfigurationFieldsForChannel('email');
+
+// Look up a single field
+$token = MessageDelivery::providerConfigurationField('twilio-sms', 'token');
+
+// Flat settings map for DB seeding (provider.field => default)
+$seed = MessageDelivery::providerSeedSettings();
+
+// Scoped settings separating secrets from secured fields
+$scoped = MessageDelivery::providerScopedSettings();
+```
+
+### Initializing Settings (e.g. a Settings Scope)
+
+A common pattern is to seed a tenant's settings when a provider is enabled:
+
+```php
+use SchoolPalm\MessageDelivery\Facades\MessageDelivery;
+
+// Seed a tenant's Twilio SMS settings
+$fields = MessageDelivery::providerConfigurationFields('twilio-sms');
+
+$settings = [
+    'provider'   => 'twilio-sms',
+    'channel'    => 'sms',
+    'fields'     => $fields,
+    'defaults'   => MessageDelivery::providerSeedSettings(),
+];
+
+// Persist $settings into your own settings scope/storage here.
+```
+
+To separate credentials from non-sensitive options, use `providerScopedSettings()`:
+
+```php
+$scoped = MessageDelivery::providerScopedSettings();
+
+// $scoped['secured']  → non-secret fields (e.g. 'from', 'sender_id')
+// $scoped['secrets']   → secret fields (e.g. 'token', 'password')
+```
+
+You can store `$scoped['secrets']` in an encrypted store and `$scoped['secured']` in a normal settings table.
+
+### Registered Providers
+
+| Provider                 | Channel    | Fields                                                     |
+| ------------------------ | ---------- | ---------------------------------------------------------- |
+| `laravel-mail`           | `email`    | `mailer`                                                   |
+| `egosms`                 | `sms`      | `api_url`, `username`, `password`, `sender_id`             |
+| `twilio-sms`             | `sms`      | `sid`, `token`, `from`                                     |
+| `africas-talking`        | `sms`      | `api_key`, `username`, `sender_id`                         |
+| `meta-whatsapp`          | `whatsapp` | `access_token`, `phone_number_id`, `version`, `verify_ssl` |
+| `twilio-whatsapp`        | `whatsapp` | `sid`, `token`, `from`                                     |
+| `firebase-push`          | `push`     | `credentials_json`, `project_id`, `server_key`             |
+| `database-notifications` | `in_app`   | `default_notifiable`                                       |
 
 ---
 

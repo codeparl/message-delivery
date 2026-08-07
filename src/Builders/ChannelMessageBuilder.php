@@ -113,6 +113,24 @@ final class ChannelMessageBuilder
 
 
     /**
+     * Set the email subject.
+     *
+     * The subject is stored in the message data array
+     * under the 'subject' key. This is used by email
+     * providers (e.g. Laravel Mail) to set the email
+     * subject line.
+     */
+    public function subject(
+        string $subject
+    ): static {
+
+        $this->data['subject'] = $subject;
+
+        return $this;
+    }
+
+
+    /**
      * Add template variables.
      */
     public function with(
@@ -255,6 +273,23 @@ final class ChannelMessageBuilder
      * Send immediately.
      */
     public function send()
+    {
+        return app(MessageManager::class)
+            ->send(
+                $this->build()
+            );
+    }
+
+
+    /**
+     * Send synchronously without using the queue.
+     *
+     * This is an explicit alias for send() that makes it
+     * clear the message is delivered immediately in the
+     * current process rather than dispatched through a
+     * queue worker.
+     */
+    public function sync()
     {
         return app(MessageManager::class)
             ->send(

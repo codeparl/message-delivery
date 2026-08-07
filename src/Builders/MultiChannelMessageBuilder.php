@@ -182,6 +182,25 @@ final class MultiChannelMessageBuilder
     }
 
     /**
+     * Set the email subject.
+     *
+     * The subject is stored in the message data array
+     * under the 'subject' key. This is used by email
+     * providers (e.g. Laravel Mail) to set the email
+     * subject line.
+     *
+     * @param  string $subject
+     * @return static
+     */
+    public function subject(
+        string $subject
+    ): static {
+        $this->data['subject'] = $subject;
+
+        return $this;
+    }
+
+    /**
      * Select specific provider.
      *
      * @param  string $provider
@@ -323,6 +342,36 @@ final class MultiChannelMessageBuilder
             try {
                 $builder = $this->createChannelBuilder($channel);
                 $result = $builder->send();
+            } catch (\Throwable $e) {
+                $result = DeliveryResult::failure(
+                    error: $e->getMessage(),
+                    provider: null,
+                    metadata: ['exception' => get_class($e)]
+                );
+            }
+
+            $multiResult->add($channel, $result);
+        }
+
+        return $multiResult;
+    }
+
+    /**
+     * Send synchronously through all channels without queuing.
+     *
+     * Dispatches to each channel sequentially in the current
+     * process. One failed channel does NOT stop others.
+     *
+     * @return MultiChannelResult
+     */
+    public function sync(): MultiChannelResult
+    {
+        $multiResult = new MultiChannelResult();
+
+        foreach ($this->channels as $channel) {
+            try {
+                $builder = $this->createChannelBuilder($channel);
+                $result = $builder->sync();
             } catch (\Throwable $e) {
                 $result = DeliveryResult::failure(
                     error: $e->getMessage(),

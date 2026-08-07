@@ -7,6 +7,8 @@ namespace SchoolPalm\MessageDelivery;
 use SchoolPalm\MessageDelivery\Builders\ChannelMessageBuilder;
 use SchoolPalm\MessageDelivery\Builders\MultiChannelMessageBuilder;
 use SchoolPalm\MessageDelivery\Context\MessageContext;
+use SchoolPalm\MessageDelivery\Providers\ConfigurationField;
+use SchoolPalm\MessageDelivery\Providers\ProviderConfigurationFields;
 use SchoolPalm\MessageDelivery\Providers\ProviderDefinition;
 use SchoolPalm\MessageDelivery\Registry\DefinitionRegistry;
 
@@ -100,6 +102,87 @@ final class MessageDelivery
     public static function providers(string $channel): array
     {
         return app(DefinitionRegistry::class)->forChannel($channel);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Provider Configuration Fields
+    |--------------------------------------------------------------------------
+    |
+    | These APIs expose the configuration schema for every provider so
+    | consuming applications can initialize settings in their own storage
+    | (e.g. a tenant settings scope). The package does not persist anything.
+    |
+    */
+
+    /**
+     * Get a single provider's configuration fields as arrays.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public static function providerConfigurationFields(string $name): array
+    {
+        return ProviderConfigurationFields::make()->provider($name);
+    }
+
+    /**
+     * Get a single provider's ConfigurationField objects.
+     *
+     * @return array<ConfigurationField>
+     */
+    public static function providerFieldObjects(string $name): array
+    {
+        return ProviderConfigurationFields::make()->providerFields($name);
+    }
+
+    /**
+     * Get all registered providers keyed by name → fields as arrays.
+     *
+     * @return array<string, array<int, array<string, mixed>>>
+     */
+    public static function allProviderConfigurationFields(): array
+    {
+        return ProviderConfigurationFields::make()->all();
+    }
+
+    /**
+     * Get all providers for a channel → fields as arrays.
+     *
+     * @return array<string, array<int, array<string, mixed>>>
+     */
+    public static function providerConfigurationFieldsForChannel(string $channel): array
+    {
+        return ProviderConfigurationFields::make()->forChannel($channel);
+    }
+
+    /**
+     * Get a single provider configuration field by provider and field name.
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function providerConfigurationField(string $provider, string $field): ?array
+    {
+        return ProviderConfigurationFields::make()->field($provider, $field);
+    }
+
+    /**
+     * Build a flat settings map ready for DB seeding.
+     *
+     * @return array<string, mixed>
+     */
+    public static function providerSeedSettings(): array
+    {
+        return ProviderConfigurationFields::make()->seedSettings();
+    }
+
+    /**
+     * Build scoped settings (secured vs secrets) for DB seeding.
+     *
+     * @return array<string, array<string, array<string, mixed>>>
+     */
+    public static function providerScopedSettings(): array
+    {
+        return ProviderConfigurationFields::make()->scopedSettings();
     }
 
     /**

@@ -1,6 +1,6 @@
 # SchoolPalm Message Delivery - Documentation Index
 
-Welcome! This is your complete guide to understanding and using the SchoolPalm Message Delivery package. The documentation is organized into three comprehensive guides designed for different learning styles and use cases.
+Welcome! This is your complete guide to understanding and using the SchoolPalm Message Delivery package. The documentation is organized into comprehensive guides designed for different learning styles and use cases.
 
 ## 📚 Documentation Files
 
@@ -12,6 +12,9 @@ Welcome! This is your complete guide to understanding and using the SchoolPalm M
 
 ### 3. [EXAMPLES.md](./EXAMPLES.md) - Practical Code Examples
 **Best for:** Learning by doing, copy-paste ready code, and common patterns
+
+### 4. [PROVIDER_CONFIGURATION.md](./PROVIDER_CONFIGURATION.md) - Provider Configuration Fields
+**Best for:** Understanding and using the provider configuration field APIs to initialize provider settings in your own storage
 
 ---
 
@@ -56,4 +59,5 @@ All documentation files are available in this package's docs folder:
 - [ARCHITECTURE.md](./ARCHITECTURE.md)
 - [DIAGRAMS.md](./DIAGRAMS.md)
 - [EXAMPLES.md](./EXAMPLES.md)
+- [PROVIDER_CONFIGURATION.md](./PROVIDER_CONFIGURATION.md)
 
