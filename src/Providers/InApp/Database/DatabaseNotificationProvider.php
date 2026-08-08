@@ -70,10 +70,14 @@ final class DatabaseNotificationProvider implements MessageProvider
      * For each recipient, a DatabaseNotification record is created.
      * Recipients can be:
      *
-     * 1. An associative array with 'notifiable_type' and 'notifiable_id':
+     * 1. An Eloquent model/notifiable instance (extracts notifiable type
+     *    and id dynamically, keeping this package decoupled from any
+     *    specific application model).
+     *
+     * 2. An associative array with 'notifiable_type' and 'notifiable_id':
      *    ['notifiable_type' => 'App\Models\User', 'notifiable_id' => 1]
      *
-     * 2. A string identifier (uses configured default notifiable type):
+     * 3. A string identifier (uses configured default notifiable type):
      *    'user-1'
      *
      * @param  Message  $message  The message to store as notification
@@ -121,7 +125,6 @@ final class DatabaseNotificationProvider implements MessageProvider
                     ]);
 
                     $notificationIds[] = $notification->id;
-
                 } catch (\Throwable $e) {
                     $errors[] = sprintf(
                         'Failed to store notification for %s: %s',
@@ -152,7 +155,6 @@ final class DatabaseNotificationProvider implements MessageProvider
                     'error_count' => count($errors),
                 ]
             );
-
         } catch (\Throwable $exception) {
 
             return DeliveryResult::failure(
@@ -200,13 +202,40 @@ final class DatabaseNotificationProvider implements MessageProvider
 
 
     /**
-     * Resolve a recipient to notifiable type and ID.
+     * Resolve a recipient to a notifiable type and ID pair.
      *
-     * @param  string|array  $recipient
+     * Supports:
+     *
+     * 1. Eloquent model / notifiable instances (dynamic, decoupled):
+     *    extracts the class as notifiable_type and the primary
+     *    key as notifiable_id.
+     *
+     * 2. Associative arrays with 'notifiable_type'/'notifiable_id'
+     *    (or 'type'/'id' aliases).
+     *
+     * 3. Plain string identifiers (uses configured default notifiable).
+     *
+     * @param  object|string|array  $recipient
      * @return array{0: string, 1: mixed}
      */
-    private function resolveRecipient(string|array $recipient): array
+    private function resolveRecipient(object|string|array $recipient): array
     {
+        // 1. Eloquent model / notifiable instance
+        if (is_object($recipient)) {
+
+            $type = $recipient->getMorphClass()
+                ?? get_class($recipient);
+
+            $id = $recipient->getKey()
+                ?? $recipient->id
+                ?? throw new RuntimeException(
+                    'Recipient object must resolve to a primary key.'
+                );
+
+            return [$type, $id];
+        }
+
+        // 2. Associative array
         if (is_array($recipient)) {
 
             $type = $recipient['notifiable_type']
@@ -222,8 +251,7 @@ final class DatabaseNotificationProvider implements MessageProvider
             return [$type, $id];
         }
 
-        // For backward compatibility, treat simple string IDs
-        // with a configurable default model
+        // 3. Plain string identifier (backward compatible)
         $defaultModel = $this->configuration['default_notifiable']
             ?? 'App\Models\User';
 
@@ -246,4 +274,3 @@ final class DatabaseNotificationProvider implements MessageProvider
         }
     }
 }
-

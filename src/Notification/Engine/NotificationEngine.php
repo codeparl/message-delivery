@@ -313,8 +313,24 @@ final class NotificationEngine implements NotificationEngineContract
             $decision->recipients
         );
 
-        if (! empty($decision->data)) {
-            $builder->with($decision->data);
+        /*
+        |--------------------------------------------------------------------------
+        | Template data cleanliness
+        |--------------------------------------------------------------------------
+        |
+        | The `recipients` payload may contain Eloquent models or serialized
+        | recipient collections. These are delivery concerns, not template
+        | variables, and must not pollute template rendering (which can crash
+        | on object string-conversion or array-serialization inside queued jobs).
+        |
+        */
+
+        $templateData = $decision->data;
+
+        unset($templateData['recipients']);
+
+        if (! empty($templateData)) {
+            $builder->with($templateData);
         }
 
         if (! empty($event->context)) {
@@ -331,7 +347,7 @@ final class NotificationEngine implements NotificationEngineContract
 
             $builder->text(
                 $decision->template->render(
-                    $decision->data
+                    $templateData
                 )
             );
         }
@@ -373,4 +389,3 @@ final class NotificationEngine implements NotificationEngineContract
         return $builder->send();
     }
 }
-

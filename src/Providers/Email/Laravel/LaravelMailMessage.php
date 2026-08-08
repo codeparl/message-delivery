@@ -95,6 +95,8 @@ final class LaravelMailMessage extends Mailable
         | Message recipients array can contain:
         |
         | - Simple email strings: ['user@example.com']
+        | - Eloquent models / notifiable objects (resolved via
+        |   routeNotificationFor('mail') or ->email)
         | - Associative arrays with name: [['email' => '...', 'name' => '...']]
         | - Mixed format
         |
@@ -105,6 +107,42 @@ final class LaravelMailMessage extends Mailable
             if (is_string($recipient)) {
 
                 $this->to($recipient);
+            } elseif (is_object($recipient)) {
+
+                // Eloquent model / notifiable instance. Prefer the
+                // mail routing channel, then fall back to the email
+                // attribute. This keeps the provider decoupled from
+                // any specific application model.
+                $email = null;
+
+                if (method_exists($recipient, 'routeNotificationFor')) {
+                    $routed = $recipient->routeNotificationFor('mail');
+
+                    if (is_string($routed)) {
+                        $email = $routed;
+                    }
+                }
+
+                $name = $recipient->name
+                    ?? $recipient->full_name
+                    ?? '';
+
+                if ($email === null && method_exists($recipient, 'getAttribute')) {
+                    $email = $recipient->getAttribute('email');
+                }
+
+                $email ??= $recipient->email
+                    ?? $recipient->email_address
+                    ?? null;
+
+                $name ??= method_exists($recipient, 'getAttribute')
+                    ? $recipient->getAttribute('name')
+                    : '';
+
+                if ($email !== null) {
+
+                    $this->to($email, $name);
+                }
             } elseif (is_array($recipient)) {
 
                 $email = $recipient['email']

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use SchoolPalm\MessageDelivery\Messages\DeliveryResult;
 use SchoolPalm\MessageDelivery\Messages\Message;
+use Illuminate\Database\Eloquent\Model;
 use SchoolPalm\MessageDelivery\Models\DatabaseNotification;
 use SchoolPalm\MessageDelivery\Providers\InApp\Database\DatabaseNotificationFactory;
 use SchoolPalm\MessageDelivery\Providers\InApp\Database\DatabaseNotificationProvider;
@@ -89,6 +90,47 @@ it('stores notifications for multiple recipients', function (): void {
     $notifications = DatabaseNotification::all();
 
     expect($notifications)->toHaveCount(2);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Eloquent Model Recipient
+|--------------------------------------------------------------------------
+*/
+
+it('stores notification for an eloquent model recipient', function (): void {
+    $user = new class([
+        'id' => 'user-uuid-123',
+    ]) extends Model {
+        protected $table = 'users';
+
+        protected $fillable = ['id'];
+
+        protected $keyType = 'string';
+    };
+
+    $provider = new DatabaseNotificationProvider([]);
+
+    $message = new Message(
+        channel: 'in_app',
+        recipients: [$user],
+        text: 'Hello model recipient.',
+        data: ['title' => 'Model Recipient'],
+    );
+
+    $result = $provider->send($message);
+
+    expect($result)->toBeInstanceOf(DeliveryResult::class)
+        ->isSuccessful()->toBeTrue()
+        ->and($result->provider)->toBe('database-notifications');
+
+    $notification = DatabaseNotification::first();
+
+    expect($notification)->not->toBeNull()
+        ->and($notification->notifiable_type)->toBe(get_class($user))
+        ->and($notification->notifiable_id)->toBe('user-uuid-123')
+        ->and($notification->title)->toBe('Model Recipient')
+        ->and($notification->body)->toBe('Hello model recipient.');
 });
 
 /*

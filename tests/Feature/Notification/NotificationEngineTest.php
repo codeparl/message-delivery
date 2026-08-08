@@ -17,6 +17,7 @@ use SchoolPalm\MessageDelivery\Notification\Contracts\TemplateResolver;
 use SchoolPalm\MessageDelivery\Notification\DTO\NotificationEvent;
 use SchoolPalm\MessageDelivery\Notification\DTO\RetryPolicy;
 use SchoolPalm\MessageDelivery\Notification\Support\NotificationCollection;
+use Illuminate\Database\Eloquent\Model;
 use SchoolPalm\MessageDelivery\Templates\Template;
 
 /*
@@ -610,4 +611,67 @@ it('renders a resolved template into the message body', function (): void {
 
     expect($notification)->not->toBeNull()
         ->and($notification->body)->toBe('Hello John, welcome!');
+});
+
+/*
+|--------------------------------------------------------------------------
+| TEST 11: Template data cleanliness with model recipients
+|--------------------------------------------------------------------------
+*/
+
+it('strips recipients from template data so model recipients do not crash rendering', function (): void {
+    $user = new class([
+        'id' => 'user-uuid-999',
+    ]) extends Model {
+        protected $table = 'users';
+
+        protected $fillable = ['id'];
+
+        protected $keyType = 'string';
+    };
+
+    $this->app->bind(
+        TemplateResolver::class,
+        fn(): TemplateResolver => new class implements TemplateResolver
+        {
+            public function resolve(NotificationEvent $event, array $channels = [], ?string $language = null): ?Template
+            {
+                return new Template(
+                    name: 'welcome',
+                    channel: 'in_app',
+                    content: 'Payment of {{ amount }} received.',
+                );
+            }
+        }
+    );
+
+    $this->app->bind(
+        RecipientResolver::class,
+        fn(): RecipientResolver => new class implements RecipientResolver
+        {
+            public function resolve(NotificationEvent $event): NotificationCollection
+            {
+                return new NotificationCollection([
+                    ['notifiable_type' => 'App\Models\User', 'notifiable_id' => 1],
+                ]);
+            }
+        }
+    );
+
+    $result = app(NotificationEngine::class)->dispatch(
+        new NotificationEvent(
+            event: 'template.cleanliness',
+            data: [
+                'amount' => '5000',
+                'recipients' => [$user],
+            ],
+        )
+    );
+
+    expect($result)->wasDispatched()->toBeTrue();
+
+    $notification = DatabaseNotification::first();
+
+    expect($notification)->not->toBeNull()
+        ->and($notification->body)->toBe('Payment of 5000 received.');
 });
