@@ -3,7 +3,7 @@
     "description": "A message delivery package supporting email, sms, push and whatsapp providers for Laravel packages.",
     "type": "library",
     "license": "MIT",
-    "version": "2.0.0",
+    "version": "2.0.1",
     "keywords": [
         "laravel",
         "message",
