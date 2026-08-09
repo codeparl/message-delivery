@@ -13,57 +13,60 @@ final class VariableResolver
         string $content,
         array $variables = []
     ): string {
-
         foreach ($variables as $key => $value) {
+            $key = trim((string) $key);
 
-            // Prevent "Array to string conversion" errors if a variable is an array or object
             if (is_array($value)) {
-                $value = $value['name'] ?? $value['title'] ?? json_encode($value);
+                $value = $value['name']
+                    ?? $value['title']
+                    ?? json_encode(
+                        $value,
+                        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+                    );
             } elseif (is_object($value)) {
                 $value = method_exists($value, '__toString')
                     ? (string) $value
                     : ($value->name ?? $value->title ?? get_class($value));
             }
 
-            $content = str_replace(
-                [
-                    '{{ ' . $key . ' }}',
-                    '{{' . $key . '}}',
-                    '{ ' . $key . ' }',
-                    '{' . $key . '}',
-                ],
-                (string) ($value ?? ''),
-                $content
-            );
-        }
+            $replacement = (string) ($value ?? '');
 
+            /*
+             * Match:
+             *
+             * {{name}}
+             * {{ name }}
+             * {{  name  }}
+             * {name}
+             * { name }
+             * {  name  }
+             */
+            $content = preg_replace(
+                '/\{\{\s*' . preg_quote($key, '/') . '\s*\}\}|\{\s*' . preg_quote($key, '/') . '\s*\}/u',
+                $replacement,
+                $content
+            ) ?? $content;
+        }
 
         return $content;
     }
 
-
     /**
      * Extract variables used in template.
-     *
-     * Example:
-     *
-     * "Hello {{name}} or {name}"
-     *
-     * returns:
-     *
-     * ['name', 'name']
      */
-    public function extract(
-        string $content
-    ): array {
-
+    public function extract(string $content): array
+    {
         preg_match_all(
-            '/(?:{{\s*(.*?)\s*}}|{\s*(.*?)\s*})/',
+            '/\{\{?\s*([a-zA-Z0-9_.-]+)\s*\}\}?/u',
             $content,
             $matches
         );
 
-
-        return array_values(array_filter(array_merge($matches[1] ?? [], $matches[2] ?? [])));
+        return array_values(array_unique(
+            array_map(
+                static fn(string $key): string => trim($key),
+                $matches[1] ?? []
+            )
+        ));
     }
 }

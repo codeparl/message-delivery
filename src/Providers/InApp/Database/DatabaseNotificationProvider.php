@@ -92,22 +92,27 @@ final class DatabaseNotificationProvider implements MessageProvider
 
             $this->validateConfiguration();
 
-            $rawTitle = $message->data['title']
-                ?? $message->data['subject']
+            // Priority: subject -> title -> fallback 'Notification'
+            $rawTitle = $message->data['subject']
+                ?? $message->data['title']
                 ?? 'Notification';
 
             $rawBody = $message->text ?? '';
 
-            // Resolve template/variables against message context
+            // Resolve template/variables against message data
             $resolver = new VariableResolver();
 
             if (method_exists($message, 'hasTemplate') && $message->hasTemplate() && $message->template->hasSubject()) {
-                $title = $message->template->renderSubject($message->context);
+                $title = $message->template->renderSubject($message->data);
             } else {
-                $title = $resolver->resolve($rawTitle, $message->context);
+                $title = $resolver->resolve($rawTitle, $message->data);
             }
 
-            $body = $resolver->resolve($rawBody, $message->context);
+            $body = $resolver->resolve($rawBody, $message->data);
+
+            // Clean data by removing redundant recipient payloads if present
+            $cleanedData = $message->data;
+            unset($cleanedData['recipient'], $cleanedData['recipients']);
 
             $notificationIds = [];
             $errors = [];
@@ -124,11 +129,10 @@ final class DatabaseNotificationProvider implements MessageProvider
                         'title' => $title,
                         'body' => $body,
                         'data' => array_merge(
-                            $message->data,
+                            $cleanedData,
                             [
                                 'channel' => $message->channel,
                                 'provider' => $this->name(),
-                                'context' => $message->context,
                                 'priority' => $message->priority,
                             ]
                         ),
@@ -232,17 +236,24 @@ final class DatabaseNotificationProvider implements MessageProvider
      */
     private function resolveRecipient(object|string|array $recipient): array
     {
+        // 0. If it's a JSON-serialized string, decode it first
+        if (is_string($recipient)) {
+            $decoded = json_decode($recipient, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $recipient = $decoded;
+            }
+        }
+
         // 1. Eloquent model / notifiable instance
         if (is_object($recipient)) {
 
-            $type = $recipient->getMorphClass()
-                ?? get_class($recipient);
+            $type = method_exists($recipient, 'getMorphClass')
+                ? $recipient->getMorphClass()
+                : get_class($recipient);
 
-            $id = $recipient->getKey()
-                ?? $recipient->id
-                ?? throw new RuntimeException(
-                    'Recipient object must resolve to a primary key.'
-                );
+            $id = method_exists($recipient, 'getKey')
+                ? $recipient->getKey()
+                : ($recipient->id ?? throw new RuntimeException('Recipient object must resolve to a primary key.'));
 
             return [$type, $id];
         }
@@ -256,8 +267,9 @@ final class DatabaseNotificationProvider implements MessageProvider
 
             $id = $recipient['notifiable_id']
                 ?? $recipient['id']
+                ?? $recipient['user_id']
                 ?? throw new RuntimeException(
-                    'Recipient array must contain notifiable_type and notifiable_id.'
+                    'Recipient array must contain notifiable_type and notifiable_id/id.'
                 );
 
             return [$type, $id];

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SchoolPalm\MessageDelivery\Notification\Engine;
 
 use SchoolPalm\MessageDelivery\MessageDelivery;
+use SchoolPalm\MessageDelivery\Messages\MultiChannelResult;
 use SchoolPalm\MessageDelivery\Notification\Contracts\ChannelResolver;
 use SchoolPalm\MessageDelivery\Notification\Contracts\EventResolver;
 use SchoolPalm\MessageDelivery\Notification\Contracts\LanguageResolver;
@@ -25,38 +26,22 @@ use SchoolPalm\MessageDelivery\Notification\Support\NotificationResult;
  * The engine coordinates resolvers and delegates message delivery
  * to the existing MessageDelivery package. It is orchestration-only
  * and MUST NOT contain business rules.
- *
- * Flow:
- *
- * 1.  Resolve event metadata
- * 2.  Resolve recipients
- * 3.  Skip when no recipients
- * 4.  Resolve preferences
- * 5.  Resolve channels
- * 6.  Skip when no channels
- * 7.  Resolve language
- * 8.  Resolve template
- * 9.  Resolve priority
- * 10. Resolve schedule
- * 11. Resolve retry policy
- * 12. Build messages
- * 13. Delegate to MessageDelivery
  */
 final class NotificationEngine implements NotificationEngineContract
 {
     /**
      * Create the notification engine.
      *
-     * @param  EventResolver      $eventResolver
-     * @param  RecipientResolver  $recipientResolver
-     * @param  PreferenceResolver $preferenceResolver
-     * @param  ChannelResolver    $channelResolver
-     * @param  LanguageResolver   $languageResolver
-     * @param  TemplateResolver   $templateResolver
-     * @param  PriorityResolver   $priorityResolver
-     * @param  ScheduleResolver   $scheduleResolver
-     * @param  RetryResolver      $retryResolver
-     * @param  MessageDelivery    $delivery
+     * @param  EventResolver       $eventResolver
+     * @param  RecipientResolver   $recipientResolver
+     * @param  PreferenceResolver  $preferenceResolver
+     * @param  ChannelResolver     $channelResolver
+     * @param  LanguageResolver    $languageResolver
+     * @param  TemplateResolver    $templateResolver
+     * @param  PriorityResolver    $priorityResolver
+     * @param  ScheduleResolver    $scheduleResolver
+     * @param  RetryResolver       $retryResolver
+     * @param  MessageDelivery     $delivery
      * @param  array<string, mixed> $config
      */
     public function __construct(
@@ -281,112 +266,90 @@ final class NotificationEngine implements NotificationEngineContract
         |--------------------------------------------------------------------------
         */
 
-        $delivery = $this->deliver(
+        $multiChannelResult = $this->deliver(
             $event,
             $decision
         );
 
+        // Convert MultiChannelResult to array for NotificationResult DTO
+        $deliveryData = method_exists($multiChannelResult, 'toArray')
+            ? $multiChannelResult->toArray()
+            : (method_exists($multiChannelResult, 'all') ? $multiChannelResult->all() : (array) $multiChannelResult);
 
         return NotificationResult::dispatched(
             event: $event,
             decision: $decision,
-            delivery: $delivery,
+            delivery: $deliveryData,
         );
     }
 
 
     /**
      * Build messages from the decision and delegate to MessageDelivery.
-     *
-     * @return \SchoolPalm\MessageDelivery\Messages\MultiChannelResult
-     */
-    /**
-     * Build messages from the decision and delegate to MessageDelivery.
-     *
-     * @return array<string, \SchoolPalm\MessageDelivery\Messages\MultiChannelResult>
      */
     protected function deliver(
         NotificationEvent $event,
         NotificationDecision $decision
-    ): array {
-        $results = [];
-        $templateData = $decision->data;
+    ): MultiChannelResult {
 
-        // Keep template data clean
-        unset($templateData['recipients']);
+        $builder = $this->delivery->channels($decision->channels);
 
-        foreach ($decision->channels as $channel) {
-            // 1. Extract recipients specifically meant for THIS channel
-            $channelRecipients = $decision->recipients[$channel] ?? [];
+        // Pass resolved recipients (Models/Objects or Email strings)
+        $builder->to($decision->recipients);
 
-            if (empty($channelRecipients)) {
-                continue; // Skip if this channel has no valid targets
-            }
+        // Filter out 'recipients' key from payload data to prevent template/queue payload contamination
+        $payloadData = $decision->data;
+        unset($payloadData['recipients']);
 
-            // 2. Use the multi-builder, but restrict it to a single channel
-            $builder = $this->delivery->channels([$channel]);
-            $builder->to($channelRecipients);
-
-            // 3. Attach data and context
-            if (! empty($templateData)) {
-                $builder->with($templateData);
-            }
-
-            if (! empty($event->context)) {
-                $builder->context($event->context);
-            }
-
-            // 4. Attach template (Channel-Aware)
-            if ($decision->template !== null) {
-                if ($decision->template->hasSubject()) {
-                    $builder->with([
-                        'subject' => $decision->template->subject,
-                    ]);
-                }
-
-                // If you want to use views for emails in the future, you can do:
-                if ($channel === 'email' && method_exists($decision->template, 'getView')) {
-                    $builder->view($decision->template->getView());
-                }
-
-                $builder->text(
-                    $decision->template->render($templateData)
-                );
-            }
-
-            // 5. Attach Queue & Retry rules
-            if ($decision->priority !== null) {
-                $builder->priority($decision->priority);
-            }
-
-            if ($decision->schedule !== null) {
-                $builder->delay($decision->schedule);
-            }
-
-            if ($decision->retryPolicy !== null) {
-                $policy = $decision->retryPolicy;
-
-                if ($policy->tries !== null) {
-                    $builder->tries($policy->tries);
-                }
-                if ($policy->timeout !== null) {
-                    $builder->timeout($policy->timeout);
-                }
-                if ($policy->backoff !== null) {
-                    $builder->backoff($policy->backoff);
-                }
-                if ($policy->queue !== null) {
-                    $builder->onQueue($policy->queue);
-                }
-                if ($policy->connection !== null) {
-                    $builder->onConnection($policy->connection);
-                }
-            }
-
-            // 6. Send and collect the result
-            $results[$channel] = $builder->send();
+        if (! empty($payloadData)) {
+            $builder->with($payloadData);
         }
 
-        return $results;
+        if (! empty($event->context)) {
+            $builder->context($event->context);
+        }
+
+        if ($decision->template !== null) {
+            if ($decision->template->hasSubject()) {
+                $builder->with([
+                    'subject' => $decision->template->subject,
+                ]);
+            }
+
+            $builder->text(
+                $decision->template->render($payloadData)
+            );
+        }
+
+        // Apply priority, schedule, and retry policies
+        if ($decision->priority !== null) {
+            $builder->priority($decision->priority);
+        }
+
+        if ($decision->schedule !== null) {
+            $builder->delay($decision->schedule);
+        }
+
+        if ($decision->retryPolicy !== null) {
+            $policy = $decision->retryPolicy;
+
+            if ($policy->tries !== null) {
+                $builder->tries($policy->tries);
+            }
+            if ($policy->timeout !== null) {
+                $builder->timeout($policy->timeout);
+            }
+            if ($policy->backoff !== null) {
+                $builder->backoff($policy->backoff);
+            }
+            if ($policy->queue !== null) {
+                $builder->onQueue($policy->queue);
+            }
+            if ($policy->connection !== null) {
+                $builder->onConnection($policy->connection);
+            }
+        }
+
+        return $builder->send();
     }
 }

@@ -75,8 +75,8 @@ final class LaravelMailMessage extends Mailable
         | Subject
         |--------------------------------------------------------------------------
         |
-        | Subject is extracted from the message data array or template, 
-        | and variables are resolved against the message context.
+        | Subject is extracted from the message data array or template,
+        | and variables are resolved against the message data array.
         |
         */
 
@@ -86,11 +86,11 @@ final class LaravelMailMessage extends Mailable
 
         // If your Message DTO has a template object with a renderSubject method, use it:
         if (method_exists($this->message, 'hasTemplate') && $this->message->hasTemplate() && $this->message->template->hasSubject()) {
-            $subject = $this->message->template->renderSubject($this->message->context);
+            $subject = $this->message->template->renderSubject($this->message->data);
         } else {
-            // Fallback: Resolve variables directly using VariableResolver
+            // Fallback: Resolve variables directly using VariableResolver against data
             $resolver = new \SchoolPalm\MessageDelivery\Templates\VariableResolver();
-            $subject = $resolver->resolve($rawSubject, $this->message->context);
+            $subject = $resolver->resolve($rawSubject, $this->message->data);
         }
 
         $this->subject($subject);
@@ -251,6 +251,8 @@ final class LaravelMailMessage extends Mailable
         |
         */
 
+        $resolver = new \SchoolPalm\MessageDelivery\Templates\VariableResolver();
+
         if ($this->message->hasView()) {
 
             $this->view(
@@ -259,8 +261,10 @@ final class LaravelMailMessage extends Mailable
             );
         } elseif ($this->message->hasText()) {
 
+            $resolvedText = $resolver->resolve($this->message->text, $this->message->data);
+
             $this->html(
-                $this->message->text
+                $resolvedText
             );
         }
 
@@ -277,8 +281,10 @@ final class LaravelMailMessage extends Mailable
 
         if (! empty($this->message->data['plain_text'])) {
 
+            $resolvedPlainText = $resolver->resolve($this->message->data['plain_text'], $this->message->data);
+
             $this->text(
-                $this->message->data['plain_text']
+                $resolvedPlainText
             );
         }
 
