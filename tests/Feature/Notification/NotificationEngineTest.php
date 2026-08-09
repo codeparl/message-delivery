@@ -27,6 +27,20 @@ use SchoolPalm\MessageDelivery\Templates\Template;
 */
 
 beforeEach(function (): void {
+    // Guard: the email channel uses Mailpit (SMTP) so Mailpit must be
+    // running on 127.0.0.1:1025 before any email tests execute.
+    $sock = @fsockopen('127.0.0.1', 1025, $errno, $errstr, 2);
+
+    if ($sock === false) {
+        throw new RuntimeException(
+            'Mailpit SMTP server is not available on 127.0.0.1:1025. '
+                . 'Start Mailpit before running integration tests:'
+                . PHP_EOL . '  mailpit'
+        );
+    }
+
+    fclose($sock);
+
     $this->app->bind(
         TenantProviderSettings::class,
         fn(): TenantProviderSettings => new class implements TenantProviderSettings
@@ -44,7 +58,7 @@ beforeEach(function (): void {
             {
                 return match ($provider) {
                     'database-notifications' => [],
-                    'laravel-mail' => ['mailer' => 'array'],
+                    'laravel-mail' => ['mailer' => 'mailpit'],
                     default => [],
                 };
             }
@@ -529,7 +543,12 @@ it('delivers through multiple channels', function (): void {
             public function resolve(NotificationEvent $event): NotificationCollection
             {
                 return new NotificationCollection([
-                    ['notifiable_type' => 'App\Models\User', 'notifiable_id' => 1],
+                    [
+                        'notifiable_type' => 'App\Models\User',
+                        'notifiable_id' => 1,
+                        'email' => 'notification-engine@example.com',
+                        'name' => 'Engine Tester',
+                    ],
                 ]);
             }
         }
@@ -546,18 +565,60 @@ it('delivers through multiple channels', function (): void {
         }
     );
 
+    $this->app->bind(
+        TemplateResolver::class,
+        fn(): TemplateResolver => new class implements TemplateResolver
+        {
+            public function resolve(NotificationEvent $event, array $channels = [], ?string $language = null): ?Template
+            {
+                return new Template(
+                    name: $event->event,
+                    channel: $channels[0] ?? 'in_app',
+                    content: 'Hello {{ name }}, you have a new notification: {{ title }}.',
+                    subject: $event->data['subject'] ?? $event->data['title'] ?? 'Notification',
+                );
+            }
+        }
+    );
+
     $result = app(NotificationEngine::class)->dispatch(
         new NotificationEvent(
             event: 'multi.channels',
-            data: ['title' => 'Hello'],
+            data: [
+                'title' => 'Hello',
+                'name' => 'Engine Tester',
+            ],
         )
     );
 
     expect($result)->wasDispatched()->toBeTrue();
 
-    expect($result->decision->channels)->toBe(['in_app', 'email'])
-        ->and($result->delivery->get('in_app'))->not->toBeNull()
-        ->and($result->delivery->get('email'))->not->toBeNull();
+    expect($result->decision->channels)->toBe(['in_app', 'email']);
+
+    // In-app delivery should be persisted through the database provider.
+    $inAppResult = $result->delivery->get('in_app');
+
+    expect($inAppResult)->not->toBeNull()
+        ->and($inAppResult->status)->toBe('sent')
+        ->and($inAppResult->provider)->toBe('database-notifications');
+
+    // Email delivery should go through the real Mailpit SMTP pipeline.
+    $emailResult = $result->delivery->get('email');
+
+    expect($emailResult)->not->toBeNull()
+        ->and($emailResult->status)->toBe('sent')
+        ->and($emailResult->provider)->toBe('laravel-mail')
+        ->and($emailResult->isSuccessful())->toBeTrue()
+        ->and($emailResult->metadata['mailer'])->toBe('mailpit');
+
+    // The template placeholders must be fully rendered in the message body
+    // (no leftover {{ }} tokens) so the sent message contains real values.
+    $notification = DatabaseNotification::first();
+
+    expect($notification)->not->toBeNull()
+        ->and($notification->body)->toBe('Hello Engine Tester, you have a new notification: Hello.')
+        ->and($notification->body)->not->toContain('{{')
+        ->and($notification->body)->not->toContain('}}');
 });
 
 /*

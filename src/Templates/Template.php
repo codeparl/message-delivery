@@ -19,6 +19,8 @@ final class Template
         public readonly array $variables = [],
 
         public readonly ?string $subject = null,
+
+        public readonly ?string $view = null,
     ) {}
 
 
@@ -34,6 +36,26 @@ final class Template
 
 
     /**
+     * Check if template has a view template.
+     *
+     * Useful for channels like email that support rich HTML views.
+     */
+    public function hasView(): bool
+    {
+        return $this->view !== null;
+    }
+
+
+    /**
+     * Get the view template name.
+     */
+    public function getView(): ?string
+    {
+        return $this->view;
+    }
+
+
+    /**
      * Check if template contains variables.
      */
     public function hasVariables(): bool
@@ -43,7 +65,7 @@ final class Template
 
 
     /**
-     * Render template variables.
+     * Render template variables into the plain text content.
      */
     public function render(
         array $data = []
@@ -53,6 +75,24 @@ final class Template
 
         return $resolver->resolve(
             $this->content,
+            $data
+        );
+    }
+
+
+    /**
+     * Render template variables into the subject string.
+     */
+    public function renderSubject(array $data = []): ?string
+    {
+        if ($this->subject === null) {
+            return null;
+        }
+
+        $resolver = new VariableResolver();
+
+        return $resolver->resolve(
+            $this->subject,
             $data
         );
     }
@@ -69,6 +109,7 @@ final class Template
             'content' => $this->content,
             'variables' => $this->variables,
             'subject' => $this->subject,
+            'view' => $this->view,
         ];
     }
 }

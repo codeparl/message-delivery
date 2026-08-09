@@ -300,92 +300,93 @@ final class NotificationEngine implements NotificationEngineContract
      *
      * @return \SchoolPalm\MessageDelivery\Messages\MultiChannelResult
      */
+    /**
+     * Build messages from the decision and delegate to MessageDelivery.
+     *
+     * @return array<string, \SchoolPalm\MessageDelivery\Messages\MultiChannelResult>
+     */
     protected function deliver(
         NotificationEvent $event,
         NotificationDecision $decision
-    ): \SchoolPalm\MessageDelivery\Messages\MultiChannelResult {
-
-        $builder = $this->delivery->channels(
-            $decision->channels
-        );
-
-        $builder->to(
-            $decision->recipients
-        );
-
-        /*
-        |--------------------------------------------------------------------------
-        | Template data cleanliness
-        |--------------------------------------------------------------------------
-        |
-        | The `recipients` payload may contain Eloquent models or serialized
-        | recipient collections. These are delivery concerns, not template
-        | variables, and must not pollute template rendering (which can crash
-        | on object string-conversion or array-serialization inside queued jobs).
-        |
-        */
-
+    ): array {
+        $results = [];
         $templateData = $decision->data;
 
+        // Keep template data clean
         unset($templateData['recipients']);
 
-        if (! empty($templateData)) {
-            $builder->with($templateData);
-        }
+        foreach ($decision->channels as $channel) {
+            // 1. Extract recipients specifically meant for THIS channel
+            $channelRecipients = $decision->recipients[$channel] ?? [];
 
-        if (! empty($event->context)) {
-            $builder->context($event->context);
-        }
-
-        if ($decision->template !== null) {
-
-            if ($decision->template->hasSubject()) {
-                $builder->with([
-                    'subject' => $decision->template->subject,
-                ]);
+            if (empty($channelRecipients)) {
+                continue; // Skip if this channel has no valid targets
             }
 
-            $builder->text(
-                $decision->template->render(
-                    $templateData
-                )
-            );
+            // 2. Use the multi-builder, but restrict it to a single channel
+            $builder = $this->delivery->channels([$channel]);
+            $builder->to($channelRecipients);
+
+            // 3. Attach data and context
+            if (! empty($templateData)) {
+                $builder->with($templateData);
+            }
+
+            if (! empty($event->context)) {
+                $builder->context($event->context);
+            }
+
+            // 4. Attach template (Channel-Aware)
+            if ($decision->template !== null) {
+                if ($decision->template->hasSubject()) {
+                    $builder->with([
+                        'subject' => $decision->template->subject,
+                    ]);
+                }
+
+                // If you want to use views for emails in the future, you can do:
+                if ($channel === 'email' && method_exists($decision->template, 'getView')) {
+                    $builder->view($decision->template->getView());
+                }
+
+                $builder->text(
+                    $decision->template->render($templateData)
+                );
+            }
+
+            // 5. Attach Queue & Retry rules
+            if ($decision->priority !== null) {
+                $builder->priority($decision->priority);
+            }
+
+            if ($decision->schedule !== null) {
+                $builder->delay($decision->schedule);
+            }
+
+            if ($decision->retryPolicy !== null) {
+                $policy = $decision->retryPolicy;
+
+                if ($policy->tries !== null) {
+                    $builder->tries($policy->tries);
+                }
+                if ($policy->timeout !== null) {
+                    $builder->timeout($policy->timeout);
+                }
+                if ($policy->backoff !== null) {
+                    $builder->backoff($policy->backoff);
+                }
+                if ($policy->queue !== null) {
+                    $builder->onQueue($policy->queue);
+                }
+                if ($policy->connection !== null) {
+                    $builder->onConnection($policy->connection);
+                }
+            }
+
+            // 6. Send and collect the result
+            $results[$channel] = $builder->send();
         }
 
-        if ($decision->priority !== null) {
-            $builder->priority($decision->priority);
-        }
-
-        if ($decision->schedule !== null) {
-            $builder->delay($decision->schedule);
-        }
-
-        if ($decision->retryPolicy !== null) {
-
-            $policy = $decision->retryPolicy;
-
-            if ($policy->tries !== null) {
-                $builder->tries($policy->tries);
-            }
-
-            if ($policy->timeout !== null) {
-                $builder->timeout($policy->timeout);
-            }
-
-            if ($policy->backoff !== null) {
-                $builder->backoff($policy->backoff);
-            }
-
-            if ($policy->queue !== null) {
-                $builder->onQueue($policy->queue);
-            }
-
-            if ($policy->connection !== null) {
-                $builder->onConnection($policy->connection);
-            }
-        }
-
-
-        return $builder->send();
+        return $results;
     }
 }

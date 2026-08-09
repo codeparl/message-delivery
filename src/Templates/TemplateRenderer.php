@@ -6,12 +6,12 @@ namespace SchoolPalm\MessageDelivery\Templates;
 
 use SchoolPalm\MessageDelivery\Contracts\TemplateRenderer as TemplateRendererContract;
 
-final class TemplateRenderer
+// 1. Implement the contract so this class can be used interchangeably
+final class TemplateRenderer implements TemplateRendererContract
 {
     public function __construct(
         protected TemplateRendererContract $engine
     ) {}
-
 
     /**
      * Render template.
@@ -20,13 +20,11 @@ final class TemplateRenderer
         string $template,
         array $data = []
     ): string {
-
         return $this->engine->render(
             $template,
             $data
         );
     }
-
 
     /**
      * Determine if template exists.
@@ -34,7 +32,6 @@ final class TemplateRenderer
     public function exists(
         string $template
     ): bool {
-
         return $this->engine->exists(
             $template
         );

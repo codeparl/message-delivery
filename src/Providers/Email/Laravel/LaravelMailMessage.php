@@ -75,14 +75,23 @@ final class LaravelMailMessage extends Mailable
         | Subject
         |--------------------------------------------------------------------------
         |
-        | Subject is extracted from the message data array.
-        | It can be set via the email builder's ->with(['subject' => '...']).
+        | Subject is extracted from the message data array or template, 
+        | and variables are resolved against the message context.
         |
         */
 
-        $subject = $this->message->data['subject']
+        $rawSubject = $this->message->data['subject']
             ?? $this->message->data['title']
             ?? 'No Subject';
+
+        // If your Message DTO has a template object with a renderSubject method, use it:
+        if (method_exists($this->message, 'hasTemplate') && $this->message->hasTemplate() && $this->message->template->hasSubject()) {
+            $subject = $this->message->template->renderSubject($this->message->context);
+        } else {
+            // Fallback: Resolve variables directly using VariableResolver
+            $resolver = new \SchoolPalm\MessageDelivery\Templates\VariableResolver();
+            $subject = $resolver->resolve($rawSubject, $this->message->context);
+        }
 
         $this->subject($subject);
 

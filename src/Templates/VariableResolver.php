@@ -16,12 +16,23 @@ final class VariableResolver
 
         foreach ($variables as $key => $value) {
 
+            // Prevent "Array to string conversion" errors if a variable is an array or object
+            if (is_array($value)) {
+                $value = $value['name'] ?? $value['title'] ?? json_encode($value);
+            } elseif (is_object($value)) {
+                $value = method_exists($value, '__toString')
+                    ? (string) $value
+                    : ($value->name ?? $value->title ?? get_class($value));
+            }
+
             $content = str_replace(
                 [
                     '{{ ' . $key . ' }}',
                     '{{' . $key . '}}',
+                    '{ ' . $key . ' }',
+                    '{' . $key . '}',
                 ],
-                (string) $value,
+                (string) ($value ?? ''),
                 $content
             );
         }
@@ -36,23 +47,23 @@ final class VariableResolver
      *
      * Example:
      *
-     * "Hello {{name}}"
+     * "Hello {{name}} or {name}"
      *
      * returns:
      *
-     * ['name']
+     * ['name', 'name']
      */
     public function extract(
         string $content
     ): array {
 
         preg_match_all(
-            '/{{\s*(.*?)\s*}}/',
+            '/(?:{{\s*(.*?)\s*}}|{\s*(.*?)\s*})/',
             $content,
             $matches
         );
 
 
-        return $matches[1] ?? [];
+        return array_values(array_filter(array_merge($matches[1] ?? [], $matches[2] ?? [])));
     }
 }

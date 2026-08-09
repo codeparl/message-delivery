@@ -18,15 +18,15 @@ final class NotificationDecision
     /**
      * Create a notification decision.
      *
-     * @param  array<int, string>       $channels   Channels to deliver through
-     * @param  array<int, mixed>        $recipients Resolved recipients
-     * @param  array<string, mixed>     $data       Payload data
-     * @param  Template|null            $template   Resolved template
-     * @param  string|null              $language   Resolved language
-     * @param  string|null              $priority   Resolved priority
-     * @param  RetryPolicy|null         $retryPolicy Resolved retry policy
+     * @param  array<int, string>               $channels    Channels to deliver through
+     * @param  array<string, array<int, mixed>> $recipients  Resolved recipients keyed by channel
+     * @param  array<string, mixed>             $data        Payload data
+     * @param  Template|null                    $template    Resolved template
+     * @param  string|null                      $language    Resolved language
+     * @param  string|null                      $priority    Resolved priority
+     * @param  RetryPolicy|null                 $retryPolicy Resolved retry policy
      * @param  \DateInterval|\DateTimeInterface|int|null $schedule Resolved schedule
-     * @param  array<string, mixed>     $preferences Resolved preferences
+     * @param  array<string, mixed>             $preferences Resolved preferences
      */
     public function __construct(
         public readonly array $channels = [],
@@ -50,11 +50,21 @@ final class NotificationDecision
 
 
     /**
-     * Check whether the decision has recipients.
+     * Check whether the decision has recipients in any channel.
      */
     public function hasRecipients(): bool
     {
-        return ! empty($this->recipients);
+        if (empty($this->recipients)) {
+            return false;
+        }
+
+        foreach ($this->recipients as $channelRecipients) {
+            if (! empty($channelRecipients)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
 
@@ -96,4 +106,3 @@ final class NotificationDecision
         ];
     }
 }
-

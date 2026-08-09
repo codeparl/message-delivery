@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace SchoolPalm\MessageDelivery\Notification\Support;
 
-use SchoolPalm\MessageDelivery\Messages\MultiChannelResult;
 use SchoolPalm\MessageDelivery\Notification\DTO\NotificationDecision;
 use SchoolPalm\MessageDelivery\Notification\DTO\NotificationEvent;
 
@@ -12,18 +11,18 @@ use SchoolPalm\MessageDelivery\Notification\DTO\NotificationEvent;
  * Result of a notification dispatch.
  *
  * Carries the dispatch status, the original event, the resolved
- * decision and, when delivered, the underlying delivery result.
+ * decision and, when delivered, the underlying delivery results.
  */
 final class NotificationResult
 {
     /**
      * Create a notification result.
      *
-     * @param  string                $status    dispatched | skipped | failed
-     * @param  NotificationEvent     $event     Original event
+     * @param  string                    $status   dispatched | skipped | failed
+     * @param  NotificationEvent         $event    Original event
      * @param  NotificationDecision|null $decision Resolved decision
-     * @param  MultiChannelResult|null $delivery Delivery result
-     * @param  string|null           $reason    Skip/failure reason
+     * @param  array                     $delivery Delivery results keyed by channel
+     * @param  string|null               $reason   Skip/failure reason
      */
     public function __construct(
         public readonly string $status,
@@ -32,7 +31,7 @@ final class NotificationResult
 
         public readonly ?NotificationDecision $decision = null,
 
-        public readonly ?MultiChannelResult $delivery = null,
+        public readonly array $delivery = [],
 
         public readonly ?string $reason = null,
     ) {}
@@ -44,7 +43,7 @@ final class NotificationResult
     public static function dispatched(
         NotificationEvent $event,
         NotificationDecision $decision,
-        MultiChannelResult $delivery
+        array $delivery
     ): self {
         return new self(
             status: 'dispatched',
@@ -97,13 +96,26 @@ final class NotificationResult
      */
     public function toArray(): array
     {
+        // Safely extract data from the delivery result objects for serialization
+        $deliveryData = array_map(function ($result) {
+            if (is_object($result)) {
+                if (method_exists($result, 'all')) {
+                    return $result->all();
+                }
+                if (method_exists($result, 'toArray')) {
+                    return $result->toArray();
+                }
+            }
+
+            return $result;
+        }, $this->delivery);
+
         return [
             'status' => $this->status,
             'event' => $this->event->toArray(),
             'decision' => $this->decision?->toArray(),
-            'delivery' => $this->delivery?->all(),
+            'delivery' => $deliveryData,
             'reason' => $this->reason,
         ];
     }
 }
-

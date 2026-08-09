@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SchoolPalm\MessageDelivery\Services;
 
+use Illuminate\Database\Eloquent\Model;
 use SchoolPalm\MessageDelivery\Contracts\DeliveryRecorder;
 use SchoolPalm\MessageDelivery\Contracts\TenantProviderSettings;
 use SchoolPalm\MessageDelivery\Messages\DeliveryResult;
@@ -62,7 +63,7 @@ final class DatabaseDeliveryRecorder implements DeliveryRecorder
             'provider' => $this->resolveProvider($message),
             'recipient' => $this->resolveRecipient($message),
             'status' => 'queued',
-            'subject' => $message->data['subject'] ?? null,
+            'subject' => $message->data['subject'] ?? $message->data['title'] ?? null,
             'tenant_id' => $message->context('tenant_id'),
             'school_id' => $message->context('school_id'),
             'metadata' => $this->buildMetadata($message),
@@ -147,13 +148,15 @@ final class DatabaseDeliveryRecorder implements DeliveryRecorder
 
 
     /**
-     * Resolve a single recipient string from the message.
+     * Resolve a single recipient identifier (ID or string) from the message.
      *
-     * Uses the first recipient when multiple recipients exist.
+     * Uses the first recipient when multiple recipients exist, extracting
+     * keys from Eloquent models or arrays rather than storing the entire objects.
      *
      * @param  Message  $message
      * @return string
      */
+
     private function resolveRecipient(Message $message): string
     {
         $recipients = $message->recipients;
@@ -164,9 +167,35 @@ final class DatabaseDeliveryRecorder implements DeliveryRecorder
 
         $recipient = $recipients[0];
 
-        return is_string($recipient)
-            ? $recipient
-            : (string) json_encode($recipient);
+        // 1. If it's a JSON-serialized string, decode it first
+        if (is_string($recipient)) {
+            $decoded = json_decode($recipient, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $recipient = $decoded; // Convert to array so the next block can handle it
+            } else {
+                // If it's just a regular string (like an email or phone number), return it
+                return mb_strlen($recipient) > 255 ? 'hash_' . md5($recipient) : $recipient;
+            }
+        }
+
+        // 2. If it's an Eloquent model
+        if ($recipient instanceof Model) {
+            return (string) ($recipient->getKey() ?? 'unknown');
+        }
+
+        // 3. If it's an array (now including decoded JSON arrays)
+        if (is_array($recipient)) {
+            foreach (['id', 'user_id', 'uuid', 'slug', 'email', 'phone'] as $key) {
+                if (isset($recipient[$key]) && is_scalar($recipient[$key])) {
+                    return (string) $recipient[$key];
+                }
+            }
+
+            // Fallback if no ID field exists in the decoded payload
+            return 'recipient_hash_' . md5(json_encode($recipient));
+        }
+
+        return 'unknown';
     }
 
 

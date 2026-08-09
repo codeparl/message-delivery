@@ -9,6 +9,7 @@ use SchoolPalm\MessageDelivery\Contracts\MessageProvider;
 use SchoolPalm\MessageDelivery\Messages\DeliveryResult;
 use SchoolPalm\MessageDelivery\Messages\Message;
 use SchoolPalm\MessageDelivery\Models\DatabaseNotification;
+use SchoolPalm\MessageDelivery\Templates\VariableResolver;
 
 /**
  * Provider that stores notifications in the database for in-app display.
@@ -91,11 +92,22 @@ final class DatabaseNotificationProvider implements MessageProvider
 
             $this->validateConfiguration();
 
-            $title = $message->data['title']
+            $rawTitle = $message->data['title']
                 ?? $message->data['subject']
                 ?? 'Notification';
 
-            $body = $message->text ?? '';
+            $rawBody = $message->text ?? '';
+
+            // Resolve template/variables against message context
+            $resolver = new VariableResolver();
+
+            if (method_exists($message, 'hasTemplate') && $message->hasTemplate() && $message->template->hasSubject()) {
+                $title = $message->template->renderSubject($message->context);
+            } else {
+                $title = $resolver->resolve($rawTitle, $message->context);
+            }
+
+            $body = $resolver->resolve($rawBody, $message->context);
 
             $notificationIds = [];
             $errors = [];
