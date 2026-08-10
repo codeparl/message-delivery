@@ -183,13 +183,20 @@ final class NotificationDispatch
     }
 
     /**
-     * Explicitly override Blade/template view path.
+     * Explicitly override Blade/template view path with optional view data.
      * Takes precedence over TemplateResolver lookup.
+     *
+     * @param  string  $view  View template path or namespace
+     * @param  array<string, mixed>  $data  View data payload
      */
-    public function view(string $view): static
+    public function view(string $view, array $data = []): static
     {
         $this->metadata['view'] = $view;
         $this->data['view'] = $view;
+
+        if (!empty($data)) {
+            $this->data($data);
+        }
 
         return $this;
     }

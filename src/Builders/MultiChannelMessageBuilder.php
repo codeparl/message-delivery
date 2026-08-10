@@ -137,15 +137,35 @@ final class MultiChannelMessageBuilder
     }
 
     /**
-     * Use a Laravel view template.
+     * Set payload/view data variables.
      *
-     * @param  string $view
-     * @return static
+     * @param  array<string, mixed>|string  $key
+     * @param  mixed  $value
      */
-    public function view(
-        string $view
-    ): static {
+    public function with(array|string $key, mixed $value = null): static
+    {
+        if (is_array($key)) {
+            $this->data = array_merge($this->data, $key);
+        } else {
+            $this->data[$key] = $value;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Use a Laravel view template with optional view data.
+     *
+     * @param  string  $view  View template name or namespace
+     * @param  array<string, mixed>  $data  View data variables
+     */
+    public function view(string $view, array $data = []): static
+    {
         $this->view = $view;
+
+        if (!empty($data)) {
+            $this->with($data);
+        }
 
         return $this;
     }
@@ -164,22 +184,7 @@ final class MultiChannelMessageBuilder
         return $this;
     }
 
-    /**
-     * Add template variables.
-     *
-     * @param  array $data
-     * @return static
-     */
-    public function with(
-        array $data
-    ): static {
-        $this->data = array_merge(
-            $this->data,
-            $data
-        );
 
-        return $this;
-    }
 
     /**
      * Set the email subject.
