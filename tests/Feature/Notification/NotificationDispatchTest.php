@@ -321,3 +321,104 @@ it('runs notification dispatch synchronously so results are immediately observab
     // The in-app provider effect is immediately observable.
     expect(DatabaseNotification::where('title', 'Sync')->exists())->toBeTrue();
 });
+
+/*
+|--------------------------------------------------------------------------
+| TEST 8: Explicit Recipient Resolution via Fluent Builder
+|--------------------------------------------------------------------------
+*/
+
+it('respects explicit recipients set via the fluent builder', function (): void {
+    $customRecipient = [
+        'notifiable_type' => 'App\Models\User',
+        'notifiable_id' => 99,
+        'email' => 'explicit-user@example.com',
+        'name' => 'Explicit User',
+    ];
+
+    $result = Notification::event('user.welcome')
+        ->channels(['in_app'])
+        ->to($customRecipient)
+        ->data(['title' => 'Welcome Explicit User'])
+        ->dispatch();
+
+    expect($result)
+        ->toBeInstanceOf(NotificationResult::class)
+        ->wasDispatched()->toBeTrue();
+
+    expect($result->event->data)->toHaveKey('recipients')
+        ->and($result->event->data['recipients'])->toContain($customRecipient);
+});
+
+/*
+|--------------------------------------------------------------------------
+| TEST 9: Explicit Template and View Overrides via Fluent Builder
+|--------------------------------------------------------------------------
+*/
+
+it('respects explicit view overrides via the fluent builder', function (): void {
+    $result = Notification::event('user.welcome')
+        ->channels(['in_app'])
+        ->view('emails.custom-override')
+        ->data(['title' => 'Custom View Title'])
+        ->dispatch();
+
+    expect($result)
+        ->toBeInstanceOf(NotificationResult::class)
+        ->wasDispatched()->toBeTrue();
+
+    expect($result->event->metadata['view'] ?? $result->event->data['view'])->toBe('emails.custom-override');
+
+    $inAppResult = $result->delivery->get('in_app');
+    expect($inAppResult)->not->toBeNull()
+        ->and($inAppResult->isSuccessful())->toBeTrue();
+});
+
+/*
+|--------------------------------------------------------------------------
+| TEST 10: Explicit Schedule and Delay Resolution
+|--------------------------------------------------------------------------
+*/
+
+it('resolves explicit schedules and delayed execution via schedule resolver', function (): void {
+    $scheduledAt = now()->addHours(2);
+
+    $result = Notification::event('reminder.send')
+        ->channels(['in_app'])
+        ->schedule($scheduledAt)
+        ->data(['title' => 'Scheduled Reminder'])
+        ->dispatch();
+
+    expect($result)
+        ->toBeInstanceOf(NotificationResult::class);
+
+    $scheduled = $result->event->metadata['scheduled_at'] ?? null;
+
+    expect($scheduled)->not->toBeNull()
+        ->and($scheduled->toIso8601String())
+        ->toBe($scheduledAt->toIso8601String());
+});
+
+/*
+|--------------------------------------------------------------------------
+| TEST 11: Explicit Retry Policy and Queue Metadata
+|--------------------------------------------------------------------------
+*/
+
+it('extracts explicit retry policies and queue options from dispatch metadata', function (): void {
+    $result = Notification::event('invoice.generated')
+        ->channels(['in_app'])
+        ->onQueue('high-priority')
+        ->tries(5)
+        ->backoff([10, 30, 60])
+        ->data(['title' => 'Invoice #1001'])
+        ->dispatch();
+
+    expect($result)
+        ->toBeInstanceOf(NotificationResult::class)
+        ->wasDispatched()->toBeTrue();
+
+    expect($result->event->metadata)->toHaveKey('queue', 'high-priority')
+        ->and($result->event->metadata)->toHaveKey('tries', 5)
+        ->and($result->event->metadata)->toHaveKey('backoff', [10, 30, 60]);
+});
