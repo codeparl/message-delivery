@@ -4,41 +4,34 @@ declare(strict_types=1);
 
 namespace SchoolPalm\MessageDelivery\Builders;
 
-use SchoolPalm\MessageDelivery\Messages\MultiChannelResult;
+use DateInterval;
+use DateTimeInterface;
 use SchoolPalm\MessageDelivery\Messages\DeliveryResult;
+use SchoolPalm\MessageDelivery\Messages\MultiChannelResult;
+use Throwable;
 
 /**
  * Allows sending the same communication through multiple channels.
- *
- * Who consumes it:
- * - Module developers across SchoolPalm modules
- *   (Finance, Admissions, Communications, etc.)
- *
- * Example:
- *
- * MessageDelivery::multi()
- *     ->channels(['email', 'sms'])
- *     ->to($parent)
- *     ->text('Your child has been admitted')
- *     ->send();
- *
- * Responsibility:
- * - Manage multiple ChannelMessageBuilder instances
- * - Share common message data (recipients, text, etc.)
- * - Dispatch messages to multiple channels
- * - Aggregate results into MultiChannelResult
- *
- * What it does NOT handle:
- * - Does NOT send messages directly (delegates to ChannelMessageBuilder)
- * - Does NOT know about providers or APIs
- * - Does NOT know email/SMS implementation details
- * - Does NOT handle channel-specific logic
  */
 final class MultiChannelMessageBuilder
 {
+    /**
+     * @var array<int, string>
+     */
     protected array $channels = [];
 
+    /**
+     * @var array<int, mixed>
+     */
     protected array $recipients = [];
+
+    /**
+     * Property/channel route mappings for DTOs, models, or plain arrays.
+     * e.g. ['email' => 'emailAddress', 'sms' => 'mobile', 'in_app' => 'parentId']
+     *
+     * @var array<string, mixed>
+     */
+    protected array $routes = [];
 
     protected ?string $view = null;
 
@@ -59,17 +52,15 @@ final class MultiChannelMessageBuilder
     /**
      * Create a MultiChannelMessageBuilder instance.
      *
-     * @param array $channels  List of channel names (e.g. ['email', 'sms'])
-     * @param array $context   Execution context from MessageDelivery::withContext()
+     * @param array<int, string> $channels List of channel names (e.g. ['email', 'sms'])
+     * @param array $context Execution context from MessageDelivery::withContext()
      */
     public function __construct(
         array $channels = [],
         array $context = [],
     ) {
         $this->channels = $channels;
-
         $this->context = $context;
-
         $this->queueOptions = new QueueOptionsBuilder();
     }
 
@@ -78,16 +69,12 @@ final class MultiChannelMessageBuilder
      *
      * Context is propagated to every channel builder.
      *
-     * @param  array $context
+     * @param array $context
      * @return static
      */
-    public function context(
-        array $context
-    ): static {
-        $this->context = array_merge(
-            $this->context,
-            $context
-        );
+    public function context(array $context): static
+    {
+        $this->context = array_merge($this->context, $context);
 
         return $this;
     }
@@ -95,29 +82,56 @@ final class MultiChannelMessageBuilder
     /**
      * Set the channels to send through.
      *
-     * @param  array $channels  List of channel identifiers
+     * @param array<int, string> $channels List of channel identifiers
      * @return static
      */
-    public function channels(
-        array $channels
-    ): static {
+    public function channels(array $channels): static
+    {
         $this->channels = $channels;
 
         return $this;
     }
 
     /**
-     * Set message recipients.
+     * Set message recipients (accepts models, DTO objects, strings, or arrays).
      *
-     * @param  string|array $recipients
+     * @param mixed $recipients
      * @return static
      */
-    public function to(
-        string|array $recipients
-    ): static {
-        $this->recipients = is_array($recipients)
-            ? $recipients
-            : [$recipients];
+    public function to(mixed $recipients): static
+    {
+        if (is_array($recipients)) {
+            $this->recipients = array_is_list($recipients) ? $recipients : [$recipients];
+        } else {
+            $this->recipients = [$recipients];
+        }
+
+        return $this;
+    }
+
+    /**
+     * Define channel or property routes mapping.
+     *
+     * @param array<string, mixed> $routes E.g. ['email' => 'emailAddress', 'sms' => 'mobile']
+     * @return static
+     */
+    public function routes(array $routes): static
+    {
+        $this->routes = array_merge($this->routes, $routes);
+
+        return $this;
+    }
+
+    /**
+     * Convenience method to define a single channel route mapping or target.
+     *
+     * @param string $channel E.g. 'email', 'sms', 'in_app'
+     * @param mixed $target Property name on recipient object, Closure, or raw target value
+     * @return static
+     */
+    public function route(string $channel, mixed $target): static
+    {
+        $this->routes[$channel] = $target;
 
         return $this;
     }
@@ -125,12 +139,11 @@ final class MultiChannelMessageBuilder
     /**
      * Set raw message text.
      *
-     * @param  string $text
+     * @param string $text
      * @return static
      */
-    public function text(
-        string $text
-    ): static {
+    public function text(string $text): static
+    {
         $this->text = $text;
 
         return $this;
@@ -139,8 +152,9 @@ final class MultiChannelMessageBuilder
     /**
      * Set payload/view data variables.
      *
-     * @param  array<string, mixed>|string  $key
-     * @param  mixed  $value
+     * @param array<string, mixed>|string $key
+     * @param mixed $value
+     * @return static
      */
     public function with(array|string $key, mixed $value = null): static
     {
@@ -156,8 +170,9 @@ final class MultiChannelMessageBuilder
     /**
      * Use a Laravel view template with optional view data.
      *
-     * @param  string  $view  View template name or namespace
-     * @param  array<string, mixed>  $data  View data variables
+     * @param string $view View template name or namespace
+     * @param array<string, mixed> $data View data variables
+     * @return static
      */
     public function view(string $view, array $data = []): static
     {
@@ -173,51 +188,37 @@ final class MultiChannelMessageBuilder
     /**
      * Use stored message template.
      *
-     * @param  string $template
+     * @param string $template
      * @return static
      */
-    public function template(
-        string $template
-    ): static {
+    public function template(string $template): static
+    {
         $this->template = $template;
 
         return $this;
     }
 
-
-
     /**
      * Set the email subject.
      *
-     * The subject is stored in the message data array
-     * under the 'subject' key. This is used by email
-     * providers (e.g. Laravel Mail) to set the email
-     * subject line.
-     *
-     * @param  string $subject
+     * @param string $subject
      * @return static
      */
-    public function subject(
-        string $subject
-    ): static {
+    public function subject(string $subject): static
+    {
         $this->data['subject'] = $subject;
 
         return $this;
     }
 
     /**
-     * Set the sms title.
+     * Set the title.
      *
-     * The title is stored in the message data array
-     * under the 'title' key. This is used by sms
-     * providers.
-     *
-     * @param  string $title
+     * @param string $title
      * @return static
      */
-    public function title(
-        string $title
-    ): static {
+    public function title(string $title): static
+    {
         $this->data['title'] = $title;
 
         return $this;
@@ -226,12 +227,11 @@ final class MultiChannelMessageBuilder
     /**
      * Select specific provider.
      *
-     * @param  string $provider
+     * @param string $provider
      * @return static
      */
-    public function provider(
-        string $provider
-    ): static {
+    public function provider(string $provider): static
+    {
         $this->provider = $provider;
 
         return $this;
@@ -240,12 +240,11 @@ final class MultiChannelMessageBuilder
     /**
      * Set message priority.
      *
-     * @param  string $priority
+     * @param string $priority
      * @return static
      */
-    public function priority(
-        string $priority
-    ): static {
+    public function priority(string $priority): static
+    {
         $this->priority = $priority;
 
         return $this;
@@ -254,12 +253,11 @@ final class MultiChannelMessageBuilder
     /**
      * Set queue delay.
      *
-     * @param  \DateInterval|\DateTimeInterface|int $delay
+     * @param DateInterval|DateTimeInterface|int $delay
      * @return static
      */
-    public function delay(
-        \DateInterval|\DateTimeInterface|int $delay
-    ): static {
+    public function delay(DateInterval|DateTimeInterface|int $delay): static
+    {
         $this->queueOptions->delay($delay);
 
         return $this;
@@ -268,12 +266,11 @@ final class MultiChannelMessageBuilder
     /**
      * Set queue name.
      *
-     * @param  string $queue
+     * @param string $queue
      * @return static
      */
-    public function onQueue(
-        string $queue
-    ): static {
+    public function onQueue(string $queue): static
+    {
         $this->queueOptions->onQueue($queue);
 
         return $this;
@@ -282,12 +279,11 @@ final class MultiChannelMessageBuilder
     /**
      * Set queue connection.
      *
-     * @param  string $connection
+     * @param string $connection
      * @return static
      */
-    public function onConnection(
-        string $connection
-    ): static {
+    public function onConnection(string $connection): static
+    {
         $this->queueOptions->onConnection($connection);
 
         return $this;
@@ -296,12 +292,11 @@ final class MultiChannelMessageBuilder
     /**
      * Set maximum retry attempts.
      *
-     * @param  int $tries
+     * @param int $tries
      * @return static
      */
-    public function tries(
-        int $tries
-    ): static {
+    public function tries(int $tries): static
+    {
         $this->queueOptions->tries($tries);
 
         return $this;
@@ -310,12 +305,11 @@ final class MultiChannelMessageBuilder
     /**
      * Set job timeout.
      *
-     * @param  int $seconds
+     * @param int $seconds
      * @return static
      */
-    public function timeout(
-        int $seconds
-    ): static {
+    public function timeout(int $seconds): static
+    {
         $this->queueOptions->timeout($seconds);
 
         return $this;
@@ -324,12 +318,11 @@ final class MultiChannelMessageBuilder
     /**
      * Set retry backoff.
      *
-     * @param  int|array $backoff
+     * @param int|array $backoff
      * @return static
      */
-    public function backoff(
-        int|array $backoff
-    ): static {
+    public function backoff(int|array $backoff): static
+    {
         $this->queueOptions->backoff($backoff);
 
         return $this;
@@ -338,12 +331,11 @@ final class MultiChannelMessageBuilder
     /**
      * Dispatch after database commit.
      *
-     * @param  bool $value
+     * @param bool $value
      * @return static
      */
-    public function afterCommit(
-        bool $value = true
-    ): static {
+    public function afterCommit(bool $value = true): static
+    {
         $this->queueOptions->afterCommit($value);
 
         return $this;
@@ -351,9 +343,6 @@ final class MultiChannelMessageBuilder
 
     /**
      * Send through all channels.
-     *
-     * Automatically routes to queue if queue/delay options
-     * are configured on this builder.
      *
      * @return MultiChannelResult
      */
@@ -369,9 +358,6 @@ final class MultiChannelMessageBuilder
     /**
      * Send synchronously through all channels without queuing.
      *
-     * Dispatches to each channel sequentially in the current
-     * process, ignoring attached queue options.
-     *
      * @return MultiChannelResult
      */
     public function sync(): MultiChannelResult
@@ -382,8 +368,6 @@ final class MultiChannelMessageBuilder
     /**
      * Send through queue for all channels.
      *
-     * Dispatches each channel's message to the queue.
-     *
      * @return MultiChannelResult
      */
     public function queue(): MultiChannelResult
@@ -391,23 +375,20 @@ final class MultiChannelMessageBuilder
         return $this->dispatchToChannels('queue');
     }
 
-
     /**
-     * Send through queue for all channels.
-     *
-     * Dispatches each channel's message to the queue.
+     * Alias for queue().
      *
      * @return MultiChannelResult
      */
     public function dispatch(): MultiChannelResult
     {
-        return $this->dispatchToChannels('queue');
+        return $this->queue();
     }
 
     /**
-     * Execute the given dispatch method ('send', 'sync', or 'queue') across all channels.
+     * Execute the given dispatch method across all channels.
      *
-     * @param  string $method
+     * @param string $method
      * @return MultiChannelResult
      */
     protected function dispatchToChannels(string $method): MultiChannelResult
@@ -418,7 +399,7 @@ final class MultiChannelMessageBuilder
             try {
                 $builder = $this->createChannelBuilder($channel);
                 $result = $builder->{$method}();
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 $result = DeliveryResult::failure(
                     error: $e->getMessage(),
                     provider: null,
@@ -433,13 +414,13 @@ final class MultiChannelMessageBuilder
     }
 
     /**
-     * Determine if the configured queue options require queued delivery.
+     * Determine if queue options require queued delivery.
      *
      * @return bool
      */
     protected function shouldQueue(): bool
     {
-        if (! $this->queueOptions->hasConfig()) {
+        if (!$this->queueOptions->hasConfig()) {
             return false;
         }
 
@@ -451,22 +432,24 @@ final class MultiChannelMessageBuilder
     }
 
     /**
-     * Create a ChannelMessageBuilder for a given channel
-     * with all shared values applied.
+     * Create a ChannelMessageBuilder for a given channel with all shared values applied.
      *
-     * @param  string $channel  Channel name
+     * @param string $channel
      * @return ChannelMessageBuilder
      */
-    private function createChannelBuilder(
-        string $channel
-    ): ChannelMessageBuilder {
+    private function createChannelBuilder(string $channel): ChannelMessageBuilder
+    {
         $builder = new ChannelMessageBuilder(
             channel: $channel,
             context: $this->context,
         );
 
-        if (! empty($this->recipients)) {
+        if (!empty($this->recipients)) {
             $builder->to($this->recipients);
+        }
+
+        if (!empty($this->routes)) {
+            $builder->routes($this->routes);
         }
 
         if ($this->text !== null) {
@@ -481,7 +464,7 @@ final class MultiChannelMessageBuilder
             $builder->template($this->template);
         }
 
-        if (! empty($this->data)) {
+        if (!empty($this->data)) {
             $builder->with($this->data);
         }
 
@@ -508,11 +491,11 @@ final class MultiChannelMessageBuilder
                 $builder->delay($options->delay);
             }
 
-            if ($options->hasTries()) {
+            if ($options->tries !== null) {
                 $builder->tries($options->tries);
             }
 
-            if ($options->hasTimeout()) {
+            if ($options->timeout !== null) {
                 $builder->timeout($options->timeout);
             }
 
@@ -520,8 +503,8 @@ final class MultiChannelMessageBuilder
                 $builder->backoff($options->backoff);
             }
 
-            if ($options->afterCommit) {
-                $builder->afterCommit();
+            if ($options->afterCommit !== null) {
+                $builder->afterCommit($options->afterCommit);
             }
         }
 

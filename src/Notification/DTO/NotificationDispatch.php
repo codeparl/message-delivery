@@ -35,6 +35,11 @@ final class NotificationDispatch
     protected array $metadata = [];
 
     /**
+     * @var array<string, mixed>
+     */
+    protected array $routes = [];
+
+    /**
      * @var array<int, string>
      */
     protected array $requestedChannels = [];
@@ -102,9 +107,52 @@ final class NotificationDispatch
     }
 
     /**
+     * Explicitly define property or channel route mappings.
+     *
+     * @param array<string, mixed> $routes E.g. ['email' => 'emailAddress', 'sms' => 'mobile']
+     */
+    public function routes(array $routes): static
+    {
+        $this->routes = array_merge($this->routes, $routes);
+        $this->data['routes'] = $this->routes;
+        $this->metadata['routes'] = $this->routes;
+
+        return $this;
+    }
+
+    /**
+     * Define channel route mappings or explicit targets.
+     *
+     * Supports:
+     * - route('email', 'email_address') -> Channel specific
+     * - route('email_address')          -> Global/default target key
+     * - route(['email' => 'mail'])      -> Batch array mapping
+     *
+     * @param mixed $channelOrTarget Channel name, direct target property/closure, or array of routes
+     * @param mixed $target Property name on recipient object or direct address
+     */
+    public function route(mixed $channelOrTarget, mixed $target = null): static
+    {
+        if (func_num_args() === 1) {
+            if (is_array($channelOrTarget)) {
+                return $this->routes($channelOrTarget);
+            }
+
+            $this->routes['*'] = $channelOrTarget;
+        } else {
+            $this->routes[(string) $channelOrTarget] = $target;
+        }
+
+        $this->data['routes'] = $this->routes;
+        $this->metadata['routes'] = $this->routes;
+
+        return $this;
+    }
+
+    /**
      * Set payload data variables.
      *
-     * @param  array<string, mixed>  $data
+     * @param array<string, mixed> $data
      */
     public function data(array $data): static
     {
@@ -112,6 +160,11 @@ final class NotificationDispatch
         if (isset($data['recipients'])) {
             $this->to($data['recipients']);
             unset($data['recipients']);
+        }
+
+        if (isset($data['routes']) && is_array($data['routes'])) {
+            $this->routes($data['routes']);
+            unset($data['routes']);
         }
 
         if (isset($data['title'])) {
@@ -142,7 +195,7 @@ final class NotificationDispatch
     /**
      * Alias for data().
      *
-     * @param  array<string, mixed>  $data
+     * @param array<string, mixed> $data
      */
     public function with(array $data): static
     {
@@ -186,8 +239,8 @@ final class NotificationDispatch
      * Explicitly override Blade/template view path with optional view data.
      * Takes precedence over TemplateResolver lookup.
      *
-     * @param  string  $view  View template path or namespace
-     * @param  array<string, mixed>  $data  View data payload
+     * @param string $view View template path or namespace
+     * @param array<string, mixed> $data View data payload
      */
     public function view(string $view, array $data = []): static
     {
@@ -204,7 +257,7 @@ final class NotificationDispatch
     /**
      * Set execution context.
      *
-     * @param  array<string, mixed>  $context
+     * @param array<string, mixed> $context
      */
     public function context(array $context): static
     {
@@ -216,10 +269,14 @@ final class NotificationDispatch
     /**
      * Set metadata array.
      *
-     * @param  array<string, mixed>  $metadata
+     * @param array<string, mixed> $metadata
      */
     public function metadata(array $metadata): static
     {
+        if (isset($metadata['routes']) && is_array($metadata['routes'])) {
+            $this->routes($metadata['routes']);
+        }
+
         $this->metadata = array_merge($this->metadata, $metadata);
 
         return $this;
@@ -229,7 +286,7 @@ final class NotificationDispatch
      * Explicitly request delivery channels.
      * Takes precedence over ChannelResolver lookup.
      *
-     * @param  array<int, string>|string  $channels
+     * @param array<int, string>|string $channels
      */
     public function channels(array|string $channels): static
     {

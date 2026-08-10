@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Mail;
 use SchoolPalm\MessageDelivery\Channels\EmailChannel;
 use SchoolPalm\MessageDelivery\Messages\DeliveryResult;
 use SchoolPalm\MessageDelivery\Messages\Message;
+use SchoolPalm\MessageDelivery\Notification\DTO\NotificationDispatch;
 use SchoolPalm\MessageDelivery\Providers\Email\Laravel\LaravelMailFactory;
 use SchoolPalm\MessageDelivery\Providers\Email\Laravel\LaravelMailMessage;
 use SchoolPalm\MessageDelivery\Providers\Email\Laravel\LaravelMailProvider;
@@ -370,4 +371,49 @@ it('does not set priority when null', function (): void {
 
     expect($mailable->hasTo('to@example.com'))->toBeTrue();
     expect($mailable->subject)->toBe('No Priority');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Route Specification Tests
+|--------------------------------------------------------------------------
+*/
+
+it('records channel-specific routes when route is called with two arguments', function (): void {
+    $dispatch = new NotificationDispatch('student.fee_reminder');
+    $dispatch->route('email', 'guardian_email')
+        ->route('sms', 'father_phone');
+
+    $event = $dispatch->buildEvent();
+
+    expect($event->data['routes'])->toBe([
+        'email' => 'guardian_email',
+        'sms' => 'father_phone',
+    ]);
+});
+
+it('records global default route when route is called with a single string argument', function (): void {
+    $dispatch = new NotificationDispatch('student.fee_reminder');
+    $dispatch->route('primary_email');
+
+    $event = $dispatch->buildEvent();
+
+    expect($event->data['routes'])->toBe([
+        '*' => 'primary_email',
+    ]);
+});
+
+it('records array batch routes when route or routes is called with an array', function (): void {
+    $dispatch = new NotificationDispatch('student.fee_reminder');
+    $dispatch->route([
+        'email' => 'email_address',
+        'sms' => 'phone_number',
+    ]);
+
+    $event = $dispatch->buildEvent();
+
+    expect($event->data['routes'])->toBe([
+        'email' => 'email_address',
+        'sms' => 'phone_number',
+    ]);
 });
