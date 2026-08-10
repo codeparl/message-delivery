@@ -19,61 +19,37 @@ use SchoolPalm\MessageDelivery\Notification\Contracts\TemplateResolver;
 use SchoolPalm\MessageDelivery\Notification\DTO\NotificationDecision;
 use SchoolPalm\MessageDelivery\Notification\DTO\NotificationEvent;
 use SchoolPalm\MessageDelivery\Notification\Support\NotificationResult;
+use SchoolPalm\MessageDelivery\Queue\QueueOptions;
 
 /**
  * Notification orchestration engine.
  *
  * The engine coordinates resolvers and delegates message delivery
- * to the existing MessageDelivery package. It is orchestration-only
- * and MUST NOT contain business rules.
+ * directly to the MessageDelivery package.
  */
 final class NotificationEngine implements NotificationEngineContract
 {
     /**
      * Create the notification engine.
-     *
-     * @param  EventResolver       $eventResolver
-     * @param  RecipientResolver   $recipientResolver
-     * @param  PreferenceResolver  $preferenceResolver
-     * @param  ChannelResolver     $channelResolver
-     * @param  LanguageResolver    $languageResolver
-     * @param  TemplateResolver    $templateResolver
-     * @param  PriorityResolver    $priorityResolver
-     * @param  ScheduleResolver    $scheduleResolver
-     * @param  RetryResolver       $retryResolver
-     * @param  MessageDelivery     $delivery
-     * @param  array<string, mixed> $config
      */
     public function __construct(
         protected EventResolver $eventResolver,
-
         protected RecipientResolver $recipientResolver,
-
         protected PreferenceResolver $preferenceResolver,
-
         protected ChannelResolver $channelResolver,
-
         protected LanguageResolver $languageResolver,
-
         protected TemplateResolver $templateResolver,
-
         protected PriorityResolver $priorityResolver,
-
         protected ScheduleResolver $scheduleResolver,
-
         protected RetryResolver $retryResolver,
-
         protected MessageDelivery $delivery,
-
         protected array $config = [],
     ) {}
-
 
     /**
      * Dispatch a notification event.
      *
-     * Orchestrates the resolvers and delegates delivery to the
-     * MessageDelivery package.
+     * Orchestrates the resolvers and delegates delivery to MessageDelivery.
      */
     public function dispatch(
         NotificationEvent $event
@@ -85,31 +61,18 @@ final class NotificationEngine implements NotificationEngineContract
         |--------------------------------------------------------------------------
         */
 
-        $metadata = $this->eventResolver->resolve(
-            $event
-        );
+        $metadata = $this->eventResolver->resolve($event);
 
         $event = new NotificationEvent(
             event: $event->event,
-
             data: $event->data,
-
             context: $event->context,
-
-            metadata: array_merge(
-                $event->metadata,
-                $metadata
-            ),
-
+            metadata: array_merge($event->metadata, $metadata),
             requestedChannels: $event->requestedChannels,
-
             requestedLanguage: $event->requestedLanguage,
-
             requestedPriority: $event->requestedPriority,
-
             requestedTemplate: $event->requestedTemplate,
         );
-
 
         /*
         |--------------------------------------------------------------------------
@@ -121,7 +84,6 @@ final class NotificationEngine implements NotificationEngineContract
             ->resolve($event)
             ->all();
 
-
         /*
         |--------------------------------------------------------------------------
         | 3. Skip when no recipients
@@ -129,13 +91,11 @@ final class NotificationEngine implements NotificationEngineContract
         */
 
         if (empty($recipients)) {
-
             return NotificationResult::skipped(
                 event: $event,
                 reason: 'No recipients resolved.'
             );
         }
-
 
         /*
         |--------------------------------------------------------------------------
@@ -143,9 +103,7 @@ final class NotificationEngine implements NotificationEngineContract
         |--------------------------------------------------------------------------
         */
 
-        $preferences = $this->preferenceResolver
-            ->resolve($event);
-
+        $preferences = $this->preferenceResolver->resolve($event);
 
         /*
         |--------------------------------------------------------------------------
@@ -153,12 +111,10 @@ final class NotificationEngine implements NotificationEngineContract
         |--------------------------------------------------------------------------
         */
 
-        $channels = $this->channelResolver
-            ->resolve(
-                $event,
-                $preferences
-            );
-
+        $channels = $this->channelResolver->resolve(
+            $event,
+            $preferences
+        );
 
         /*
         |--------------------------------------------------------------------------
@@ -167,13 +123,11 @@ final class NotificationEngine implements NotificationEngineContract
         */
 
         if (empty($channels)) {
-
             return NotificationResult::skipped(
                 event: $event,
                 reason: 'No channels resolved.'
             );
         }
-
 
         /*
         |--------------------------------------------------------------------------
@@ -181,11 +135,9 @@ final class NotificationEngine implements NotificationEngineContract
         |--------------------------------------------------------------------------
         */
 
-        $language = $this->languageResolver
-            ->resolve($event)
+        $language = $this->languageResolver->resolve($event)
             ?? $this->config['default_language']
             ?? null;
-
 
         /*
         |--------------------------------------------------------------------------
@@ -193,13 +145,11 @@ final class NotificationEngine implements NotificationEngineContract
         |--------------------------------------------------------------------------
         */
 
-        $template = $this->templateResolver
-            ->resolve(
-                $event,
-                $channels,
-                $language
-            );
-
+        $template = $this->templateResolver->resolve(
+            $event,
+            $channels,
+            $language
+        );
 
         /*
         |--------------------------------------------------------------------------
@@ -207,11 +157,9 @@ final class NotificationEngine implements NotificationEngineContract
         |--------------------------------------------------------------------------
         */
 
-        $priority = $this->priorityResolver
-            ->resolve($event)
+        $priority = $this->priorityResolver->resolve($event)
             ?? $this->config['default_priority']
             ?? null;
-
 
         /*
         |--------------------------------------------------------------------------
@@ -219,9 +167,7 @@ final class NotificationEngine implements NotificationEngineContract
         |--------------------------------------------------------------------------
         */
 
-        $schedule = $this->scheduleResolver
-            ->resolve($event);
-
+        $schedule = $this->scheduleResolver->resolve($event);
 
         /*
         |--------------------------------------------------------------------------
@@ -229,9 +175,7 @@ final class NotificationEngine implements NotificationEngineContract
         |--------------------------------------------------------------------------
         */
 
-        $retryPolicy = $this->retryResolver
-            ->resolve($event);
-
+        $retryPolicy = $this->retryResolver->resolve($event);
 
         /*
         |--------------------------------------------------------------------------
@@ -241,40 +185,39 @@ final class NotificationEngine implements NotificationEngineContract
 
         $decision = new NotificationDecision(
             channels: $channels,
-
             recipients: $recipients,
-
             data: $event->data,
-
             template: $template,
-
             language: $language,
-
             priority: $priority,
-
             retryPolicy: $retryPolicy,
-
             schedule: $schedule,
-
             preferences: $preferences,
         );
 
-
         /*
         |--------------------------------------------------------------------------
-        | 12/13. Build messages and delegate to MessageDelivery
+        | 12. Delegate delivery directly to MessageDelivery
         |--------------------------------------------------------------------------
         */
 
-        $multiChannelResult = $this->deliver(
-            $event,
-            $decision
-        );
+        $multiChannelResult = $this->deliverDirect($event, $decision);
 
-        // Convert MultiChannelResult to array for NotificationResult DTO
         $deliveryData = method_exists($multiChannelResult, 'toArray')
             ? $multiChannelResult->toArray()
             : (method_exists($multiChannelResult, 'all') ? $multiChannelResult->all() : (array) $multiChannelResult);
+
+        $delay = $schedule ?? $event->metadata['scheduled_at'] ?? $event->metadata['delay'] ?? null;
+        $queueOptions = $event->metadata['queue_options'] ?? null;
+
+        // If a delay or explicit queue option was passed, report queued status
+        if ($delay !== null || ($queueOptions instanceof QueueOptions && $this->shouldQueue($queueOptions))) {
+            return NotificationResult::queued(
+                event: $event,
+                decision: $decision,
+                delivery: $deliveryData,
+            );
+        }
 
         return NotificationResult::dispatched(
             event: $event,
@@ -283,21 +226,30 @@ final class NotificationEngine implements NotificationEngineContract
         );
     }
 
+    /**
+     * Determine whether queue configuration requires async execution.
+     */
+    protected function shouldQueue(QueueOptions $options): bool
+    {
+        return $options->delay !== null
+            || $options->queue !== null
+            || $options->connection !== null;
+    }
 
     /**
-     * Build messages from the decision and delegate to MessageDelivery.
+     * Build messages from the decision and delegate directly to MessageDelivery.
      */
-    protected function deliver(
+    public function deliverDirect(
         NotificationEvent $event,
         NotificationDecision $decision
     ): MultiChannelResult {
 
         $builder = $this->delivery->channels($decision->channels);
 
-        // Pass resolved recipients (Models/Objects or Email strings)
+        // Pass resolved recipients
         $builder->to($decision->recipients);
 
-        // Filter out 'recipients' key from payload data to prevent template/queue payload contamination
+        // Filter out 'recipients' key from payload data
         $payloadData = $decision->data;
         unset($payloadData['recipients']);
 
@@ -309,7 +261,38 @@ final class NotificationEngine implements NotificationEngineContract
             $builder->context($event->context);
         }
 
-        if ($decision->template !== null) {
+        // ------------------------------------------------------------------
+        // RESOLVE VIEW VS TEXT CONTENT
+        // ------------------------------------------------------------------
+        $explicitView = $event->metadata['view']
+            ?? $payloadData['view']
+            ?? $event->data['view']
+            ?? null;
+
+        $explicitText = $event->metadata['text']
+            ?? $payloadData['text']
+            ?? $event->data['text']
+            ?? null;
+
+        $explicitTitle = $event->metadata['title']
+            ?? $payloadData['title']
+            ?? $event->data['title']
+            ?? null;
+
+        if ($explicitTitle !== null) {
+            $builder->title($explicitTitle);
+        }
+
+        if ($explicitView !== null) {
+            $builder->view($explicitView);
+        }
+
+        if ($explicitText !== null) {
+            $builder->text($explicitText);
+        }
+
+        // Apply template rendering if no explicit view/text overrides were provided
+        if ($explicitView === null && $explicitText === null && $decision->template !== null) {
             if ($decision->template->hasSubject()) {
                 $builder->with([
                     'subject' => $decision->template->subject,
@@ -321,13 +304,31 @@ final class NotificationEngine implements NotificationEngineContract
             );
         }
 
-        // Apply priority, schedule, and retry policies
-        if ($decision->priority !== null) {
-            $builder->priority($decision->priority);
+        // ------------------------------------------------------------------
+        // PASS QUEUE AND SCHEDULING OPTIONS TO MESSAGE DELIVERY
+        // ------------------------------------------------------------------
+        $delay = $decision->schedule ?? $event->metadata['scheduled_at'] ?? $event->metadata['delay'] ?? null;
+        if ($delay !== null) {
+            $builder->delay($delay);
         }
 
-        if ($decision->schedule !== null) {
-            $builder->delay($decision->schedule);
+        $queueOptions = $event->metadata['queue_options'] ?? null;
+
+        // Resolve queue name: QueueOptions -> Metadata -> Config -> Fallback 'default'
+        $targetQueue = $queueOptions?->queue
+            ?? $event->metadata['queue']
+            ?? $this->config['default_queue']
+            ?? 'default';
+
+        $builder->onQueue($targetQueue);
+
+        if ($queueOptions?->connection !== null) {
+            $builder->onConnection($queueOptions->connection);
+        }
+
+        // Apply priority and retry policies
+        if ($decision->priority !== null) {
+            $builder->priority($decision->priority);
         }
 
         if ($decision->retryPolicy !== null) {

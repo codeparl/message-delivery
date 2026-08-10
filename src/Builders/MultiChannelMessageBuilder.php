@@ -201,6 +201,24 @@ final class MultiChannelMessageBuilder
     }
 
     /**
+     * Set the sms title.
+     *
+     * The title is stored in the message data array
+     * under the 'title' key. This is used by sms
+     * providers.
+     *
+     * @param  string $title
+     * @return static
+     */
+    public function title(
+        string $title
+    ): static {
+        $this->data['title'] = $title;
+
+        return $this;
+    }
+
+    /**
      * Select specific provider.
      *
      * @param  string $provider
@@ -327,51 +345,74 @@ final class MultiChannelMessageBuilder
     }
 
     /**
-     * Send immediately through all channels.
+     * Send through all channels.
      *
-     * Dispatches to each channel sequentially.
-     * One failed channel does NOT stop others.
+     * Automatically routes to queue if queue/delay options
+     * are configured on this builder.
      *
      * @return MultiChannelResult
      */
     public function send(): MultiChannelResult
     {
-        $multiResult = new MultiChannelResult();
-
-        foreach ($this->channels as $channel) {
-            try {
-                $builder = $this->createChannelBuilder($channel);
-                $result = $builder->send();
-            } catch (\Throwable $e) {
-                $result = DeliveryResult::failure(
-                    error: $e->getMessage(),
-                    provider: null,
-                    metadata: ['exception' => get_class($e)]
-                );
-            }
-
-            $multiResult->add($channel, $result);
+        if ($this->shouldQueue()) {
+            return $this->queue();
         }
 
-        return $multiResult;
+        return $this->dispatchToChannels('send');
     }
 
     /**
      * Send synchronously through all channels without queuing.
      *
      * Dispatches to each channel sequentially in the current
-     * process. One failed channel does NOT stop others.
+     * process, ignoring attached queue options.
      *
      * @return MultiChannelResult
      */
     public function sync(): MultiChannelResult
+    {
+        return $this->dispatchToChannels('sync');
+    }
+
+    /**
+     * Send through queue for all channels.
+     *
+     * Dispatches each channel's message to the queue.
+     *
+     * @return MultiChannelResult
+     */
+    public function queue(): MultiChannelResult
+    {
+        return $this->dispatchToChannels('queue');
+    }
+
+
+    /**
+     * Send through queue for all channels.
+     *
+     * Dispatches each channel's message to the queue.
+     *
+     * @return MultiChannelResult
+     */
+    public function dispatch(): MultiChannelResult
+    {
+        return $this->dispatchToChannels('queue');
+    }
+
+    /**
+     * Execute the given dispatch method ('send', 'sync', or 'queue') across all channels.
+     *
+     * @param  string $method
+     * @return MultiChannelResult
+     */
+    protected function dispatchToChannels(string $method): MultiChannelResult
     {
         $multiResult = new MultiChannelResult();
 
         foreach ($this->channels as $channel) {
             try {
                 $builder = $this->createChannelBuilder($channel);
-                $result = $builder->sync();
+                $result = $builder->{$method}();
             } catch (\Throwable $e) {
                 $result = DeliveryResult::failure(
                     error: $e->getMessage(),
@@ -387,33 +428,21 @@ final class MultiChannelMessageBuilder
     }
 
     /**
-     * Send through queue for all channels.
+     * Determine if the configured queue options require queued delivery.
      *
-     * Dispatches each channel's message to the queue.
-     * One failed channel does NOT stop others.
-     *
-     * @return MultiChannelResult
+     * @return bool
      */
-    public function queue(): MultiChannelResult
+    protected function shouldQueue(): bool
     {
-        $multiResult = new MultiChannelResult();
-
-        foreach ($this->channels as $channel) {
-            try {
-                $builder = $this->createChannelBuilder($channel);
-                $result = $builder->queue();
-            } catch (\Throwable $e) {
-                $result = DeliveryResult::failure(
-                    error: $e->getMessage(),
-                    provider: null,
-                    metadata: ['exception' => get_class($e)]
-                );
-            }
-
-            $multiResult->add($channel, $result);
+        if (! $this->queueOptions->hasConfig()) {
+            return false;
         }
 
-        return $multiResult;
+        $options = $this->queueOptions->build();
+
+        return $options->hasDelay()
+            || $options->hasQueue()
+            || $options->hasConnection();
     }
 
     /**

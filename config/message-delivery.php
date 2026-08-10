@@ -20,6 +20,31 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Queue Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Queue defaults used when messages or notifications are queued.
+    | Set default_queue to 'default' so standard queue workers process
+    | messages out-of-the-box.
+    |
+    */
+
+    'queue' => [
+
+        'default_connection' => env(
+            'MESSAGE_QUEUE_CONNECTION',
+            env('QUEUE_CONNECTION', 'database')
+        ),
+
+        'default_queue' => env(
+            'MESSAGE_QUEUE_NAME',
+            'default'
+        ),
+
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Notification Engine
     |--------------------------------------------------------------------------
     |

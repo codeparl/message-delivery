@@ -270,36 +270,36 @@ final class ChannelMessageBuilder
 
 
     /**
-     * Send immediately.
+     * Send message.
+     *
+     * Automatically queues if queue/delay options are attached to the message,
+     * unless explicitly executed via sync().
      */
     public function send()
     {
+        $message = $this->build();
+
         return app(MessageManager::class)
             ->send(
-                $this->build()
+                $message,
+                queued: $this->shouldQueue($message->queueOptions)
             );
     }
 
-
     /**
-     * Send synchronously without using the queue.
-     *
-     * This is an explicit alias for send() that makes it
-     * clear the message is delivered immediately in the
-     * current process rather than dispatched through a
-     * queue worker.
+     * Send synchronously without using the queue, overriding any attached queue options.
      */
     public function sync()
     {
         return app(MessageManager::class)
             ->send(
-                $this->build()
+                $this->build(),
+                queued: false
             );
     }
 
-
     /**
-     * Send through queue.
+     * Send through queue explicitly.
      */
     public function queue()
     {
@@ -308,6 +308,32 @@ final class ChannelMessageBuilder
                 $this->build(),
                 queued: true
             );
+    }
+
+    /**
+     * Send through queue explicitly.
+     */
+    public function dispatch()
+    {
+        return app(MessageManager::class)
+            ->send(
+                $this->build(),
+                queued: true
+            );
+    }
+
+    /**
+     * Check if the resolved QueueOptions demand queued execution.
+     */
+    protected function shouldQueue(?QueueOptions $options): bool
+    {
+        if ($options === null) {
+            return false;
+        }
+
+        return $options->hasDelay()
+            || $options->hasQueue()
+            || $options->hasConnection();
     }
 
 

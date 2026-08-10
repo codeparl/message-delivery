@@ -24,19 +24,16 @@ final class QueueOptionsBuilder
 
     protected bool $afterCommit = false;
 
-
     /**
      * Set queue delay.
      */
     public function delay(
         DateTimeInterface|DateInterval|int $delay
     ): static {
-
         $this->delay = $delay;
 
         return $this;
     }
-
 
     /**
      * Set queue connection.
@@ -44,12 +41,10 @@ final class QueueOptionsBuilder
     public function onConnection(
         string $connection
     ): static {
-
         $this->connection = $connection;
 
         return $this;
     }
-
 
     /**
      * Set queue name.
@@ -57,12 +52,10 @@ final class QueueOptionsBuilder
     public function onQueue(
         string $queue
     ): static {
-
         $this->queue = $queue;
 
         return $this;
     }
-
 
     /**
      * Set maximum retry attempts.
@@ -70,12 +63,10 @@ final class QueueOptionsBuilder
     public function tries(
         int $tries
     ): static {
-
         $this->tries = $tries;
 
         return $this;
     }
-
 
     /**
      * Set job timeout.
@@ -83,12 +74,10 @@ final class QueueOptionsBuilder
     public function timeout(
         int $seconds
     ): static {
-
         $this->timeout = $seconds;
 
         return $this;
     }
-
 
     /**
      * Set retry backoff.
@@ -104,12 +93,10 @@ final class QueueOptionsBuilder
     public function backoff(
         int|array $backoff
     ): static {
-
         $this->backoff = $backoff;
 
         return $this;
     }
-
 
     /**
      * Dispatch after database commit.
@@ -117,15 +104,13 @@ final class QueueOptionsBuilder
     public function afterCommit(
         bool $value = true
     ): static {
-
         $this->afterCommit = $value;
 
         return $this;
     }
 
-
     /**
-     * Check whether any queue option has been configured.
+     * Check whether any queue option has been explicitly configured.
      */
     public function hasConfig(): bool
     {
@@ -138,24 +123,28 @@ final class QueueOptionsBuilder
             || $this->afterCommit;
     }
 
-
     /**
-     * Build immutable queue options.
+     * Build immutable queue options with config fallbacks.
      */
     public function build(): QueueOptions
     {
         return new QueueOptions(
             delay: $this->delay,
 
-            connection: $this->connection,
+            connection: $this->connection
+                ?? config('message-delivery.queue.default_connection'),
 
-            queue: $this->queue,
+            queue: $this->queue
+                ?? config('message-delivery.queue.default_queue', 'default'),
 
-            tries: $this->tries,
+            tries: $this->tries
+                ?? config('message-delivery.queue.tries'),
 
-            timeout: $this->timeout,
+            timeout: $this->timeout
+                ?? config('message-delivery.queue.timeout'),
 
-            backoff: $this->backoff,
+            backoff: $this->backoff
+                ?? config('message-delivery.queue.backoff'),
 
             afterCommit: $this->afterCommit,
         );

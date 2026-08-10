@@ -68,16 +68,35 @@ final class NotificationDispatch
     }
 
     /**
+     * Set a single recipient.
+     */
+    public function recipient(mixed $recipient): static
+    {
+        return $this->to($recipient);
+    }
+
+    /**
+     * Set multiple recipients.
+     */
+    public function recipients(mixed $recipients): static
+    {
+        return $this->to($recipients);
+    }
+
+    /**
      * Explicitly set notification recipients.
      */
     public function to(mixed $recipients): static
     {
         $recipientsArray = is_array($recipients) ? $recipients : [$recipients];
 
-        $this->data['recipients'] = array_merge(
+        $merged = array_merge(
             $this->data['recipients'] ?? [],
             $recipientsArray
         );
+
+        // Deduplicate if items are scalar (IDs, strings, emails)
+        $this->data['recipients'] = array_values(array_unique($merged, SORT_REGULAR));
 
         return $this;
     }
@@ -89,24 +108,30 @@ final class NotificationDispatch
      */
     public function data(array $data): static
     {
+        // Extract special keys first before bulk merging payload data
         if (isset($data['recipients'])) {
             $this->to($data['recipients']);
+            unset($data['recipients']);
         }
 
         if (isset($data['title'])) {
             $this->title((string) $data['title']);
+            unset($data['title']);
         }
 
         if (isset($data['text'])) {
             $this->text((string) $data['text']);
+            unset($data['text']);
         }
 
         if (isset($data['view'])) {
             $this->view((string) $data['view']);
+            unset($data['view']);
         }
 
         if (isset($data['scheduled_at'])) {
             $this->schedule($data['scheduled_at']);
+            unset($data['scheduled_at']);
         }
 
         $this->data = array_merge($this->data, $data);
@@ -201,7 +226,7 @@ final class NotificationDispatch
      */
     public function channels(array|string $channels): static
     {
-        $this->requestedChannels = is_array($channels) ? $channels : [$channels];
+        $this->requestedChannels = is_array($channels) ? (array) $channels : [$channels];
 
         return $this;
     }
@@ -314,6 +339,8 @@ final class NotificationDispatch
 
     /**
      * Specify backoff delay strategy.
+     *
+     * @param int|array<int, int> $backoff
      */
     public function backoff(int|array $backoff): static
     {
@@ -371,10 +398,10 @@ final class NotificationDispatch
     {
         $queueOptions = $this->buildQueueOptions();
 
-        // Sync queue option configurations into metadata for engine inspection
+        // Priority order: user-defined metadata < queue options < explicit queue instance reference
         $metadata = array_merge(
-            $queueOptions->toArray(),
             $this->metadata,
+            $queueOptions->toArray(),
             ['queue_options' => $queueOptions]
         );
 

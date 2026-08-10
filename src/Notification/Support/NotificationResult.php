@@ -17,7 +17,7 @@ final class NotificationResult
     /**
      * Create a notification result.
      *
-     * @param string $status dispatched | skipped | failed
+     * @param string $status dispatched | queued | skipped | failed
      * @param NotificationEvent $event Original event
      * @param NotificationDecision|null $decision Resolved decision
      * @param array|DeliveryCollection $delivery Delivery results
@@ -56,6 +56,22 @@ final class NotificationResult
     }
 
     /**
+     * Create a queued result.
+     */
+    public static function queued(
+        NotificationEvent $event,
+        NotificationDecision $decision,
+        array|DeliveryCollection $delivery = []
+    ): self {
+        return new self(
+            status: 'queued',
+            event: $event,
+            decision: $decision,
+            delivery: $delivery,
+        );
+    }
+
+    /**
      * Create a skipped result.
      */
     public static function skipped(
@@ -79,6 +95,11 @@ final class NotificationResult
     public function wasDispatched(): bool
     {
         return $this->status === 'dispatched';
+    }
+
+    public function wasQueued(): bool
+    {
+        return $this->status === 'queued';
     }
 
     /**
