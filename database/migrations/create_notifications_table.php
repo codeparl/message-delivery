@@ -21,24 +21,27 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('notifications', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
+    $table->uuid('id')->primary();
 
-            $table->string('notifiable_type');
-            $table->string('notifiable_id');
-            $table->index(['notifiable_type', 'notifiable_id']);
+    // Optional SchoolPalm context
+    $table->uuid('school_id')->nullable()->index();
 
-            $table->string('title');
-            $table->text('body')->nullable();
+    $table->string('notifiable_type');
+    $table->string('notifiable_id');
+    $table->index(['notifiable_type', 'notifiable_id']);
 
-            $table->json('data')->nullable();
+    $table->string('title');
+    $table->text('body')->nullable();
 
-            $table->string('channel')->nullable();
-            $table->string('provider')->nullable();
+    $table->json('data')->nullable();
 
-            $table->timestamp('read_at')->nullable();
+    $table->string('channel')->nullable();
+    $table->string('provider')->nullable();
 
-            $table->timestamps();
-        });
+    $table->timestamp('read_at')->nullable();
+
+    $table->timestamps();
+});
     }
 
 

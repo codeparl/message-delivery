@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SchoolPalm\MessageDelivery;
 
+use Closure;
 use SchoolPalm\MessageDelivery\Builders\ChannelMessageBuilder;
 use SchoolPalm\MessageDelivery\Builders\MultiChannelMessageBuilder;
 use SchoolPalm\MessageDelivery\Context\MessageContext;
@@ -11,6 +12,7 @@ use SchoolPalm\MessageDelivery\Providers\ConfigurationField;
 use SchoolPalm\MessageDelivery\Providers\ProviderConfigurationFields;
 use SchoolPalm\MessageDelivery\Providers\ProviderDefinition;
 use SchoolPalm\MessageDelivery\Registry\DefinitionRegistry;
+use SchoolPalm\QueuedJobs\Facades\QueuedJobs;
 
 final class MessageDelivery
 {
@@ -47,10 +49,17 @@ final class MessageDelivery
     public function mergeContext(
         array|MessageContext $context
     ): self {
-        $additional = $context instanceof MessageContext ? $context->all() : $context;
+        $additional = $context instanceof MessageContext
+            ? $context->all()
+            : $context;
+
         $current = $this->context?->all() ?? [];
 
-        return new self(new MessageContext(array_merge($current, $additional)));
+        return new self(
+            new MessageContext(
+                array_merge($current, $additional)
+            )
+        );
     }
 
     /**
@@ -65,13 +74,54 @@ final class MessageDelivery
     /**
      * Forward static mergeContext calls or delegate dynamically via __callStatic.
      */
-    public static function __callStatic(string $method, array $arguments): mixed
-    {
+    public static function __callStatic(
+        string $method,
+        array $arguments
+    ): mixed {
         if ($method === 'mergeContext') {
             return static::withContext(...$arguments);
         }
 
-        throw new \BadMethodCallException("Call to undefined method " . static::class . "::{$method}()");
+        throw new \BadMethodCallException(
+            "Call to undefined method "
+            . static::class
+            . "::{$method}()"
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Queue Context Integration
+    |--------------------------------------------------------------------------
+    |
+    | Message Delivery does not know how application context is restored.
+    | The consuming application (e.g. SchoolPalm Module Bridge) provides
+    | the implementation.
+    |
+    | The callback is registered with Queued Jobs and will be invoked by
+    | RestoreJobContext when a ContextAwareJob is processed by a worker.
+    |
+    */
+
+    /**
+     * Register the application-specific queue context restorer.
+     *
+     * Message Delivery only exposes this integration point. It does not
+     * know about tenants, schools, users, sessions, authentication, or
+     * any other application-specific context.
+     *
+     * Example from Module Bridge:
+     *
+     * MessageDelivery::restoreContextUsing(
+     *     function (QueueContext $context): void {
+     *         // Restore SchoolPalm application context.
+     *     }
+     * );
+     */
+    public static function restoreContextUsing(
+        Closure $callback
+    ): void {
+        QueuedJobs::restoreContextUsing($callback);
     }
 
     /**
@@ -79,8 +129,9 @@ final class MessageDelivery
      *
      * @throws \InvalidArgumentException
      */
-    public static function definition(string $name): ProviderDefinition
-    {
+    public static function definition(
+        string $name
+    ): ProviderDefinition {
         return app(DefinitionRegistry::class)->get($name);
     }
 
@@ -99,8 +150,9 @@ final class MessageDelivery
      *
      * @return array<string, ProviderDefinition>
      */
-    public static function providers(string $channel): array
-    {
+    public static function providers(
+        string $channel
+    ): array {
         return app(DefinitionRegistry::class)->forChannel($channel);
     }
 
@@ -120,8 +172,9 @@ final class MessageDelivery
      *
      * @return array<int, array<string, mixed>>
      */
-    public static function providerConfigurationFields(string $name): array
-    {
+    public static function providerConfigurationFields(
+        string $name
+    ): array {
         return ProviderConfigurationFields::make()->provider($name);
     }
 
@@ -130,8 +183,9 @@ final class MessageDelivery
      *
      * @return array<ConfigurationField>
      */
-    public static function providerFieldObjects(string $name): array
-    {
+    public static function providerFieldObjects(
+        string $name
+    ): array {
         return ProviderConfigurationFields::make()->providerFields($name);
     }
 
@@ -150,8 +204,9 @@ final class MessageDelivery
      *
      * @return array<string, array<int, array<string, mixed>>>
      */
-    public static function providerConfigurationFieldsForChannel(string $channel): array
-    {
+    public static function providerConfigurationFieldsForChannel(
+        string $channel
+    ): array {
         return ProviderConfigurationFields::make()->forChannel($channel);
     }
 
@@ -160,9 +215,14 @@ final class MessageDelivery
      *
      * @return array<string, mixed>|null
      */
-    public static function providerConfigurationField(string $provider, string $field): ?array
-    {
-        return ProviderConfigurationFields::make()->field($provider, $field);
+    public static function providerConfigurationField(
+        string $provider,
+        string $field
+    ): ?array {
+        return ProviderConfigurationFields::make()->field(
+            $provider,
+            $field
+        );
     }
 
     /**
@@ -257,7 +317,9 @@ final class MessageDelivery
     public static function notify(
         string|array $recipients
     ): MultiChannelMessageBuilder {
-        $recipients = is_array($recipients) ? $recipients : [$recipients];
+        $recipients = is_array($recipients)
+            ? $recipients
+            : [$recipients];
 
         return (new MultiChannelMessageBuilder(
             channels: [],
@@ -277,3 +339,4 @@ final class MessageDelivery
         );
     }
 }
+
