@@ -70,14 +70,19 @@ final class Message
 
 
         /**
-         * Execution context.
+         * Execution context supplied by the host application.
+         *
+         * The MessageDelivery package does not interpret the
+         * individual context values.
          *
          * Example:
          *
          * [
-         *   'tenant_id'=>1,
-         *   'school_id'=>10,
-         *   'module'=>'fees'
+         *     'tenant_id' => 'emma',
+         *     'school_id' => '1',
+         *     'context_id' => '1',
+         *     'user_id' => '1',
+         *     'module' => 'schoolpalm.common.student',
          * ]
          */
         public readonly array $context = [],
@@ -137,14 +142,31 @@ final class Message
 
 
     /**
-     * Get context value.
+     * Get a context value.
      */
     public function context(
         string $key,
         mixed $default = null
     ): mixed {
-
         return $this->context[$key] ?? $default;
+    }
+
+
+    /**
+     * Get the context identifier used for notification persistence.
+     *
+     * The generic context_id is preferred when supplied by the
+     * host application through ModuleBridge.
+     *
+     * school_id is retained as a fallback for SchoolPalm
+     * compatibility.
+     *
+     * Returns null when the message has no notification context.
+     */
+    public function notificationContext(): string|int|null
+    {
+        return $this->context('context_id')
+            ?? $this->context('school_id');
     }
 
 
@@ -173,7 +195,7 @@ final class Message
             'context' => $this->context,
 
             'queue_options' =>
-            $this->queueOptions?->toArray(),
+                $this->queueOptions?->toArray(),
         ];
     }
 }

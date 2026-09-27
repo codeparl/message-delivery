@@ -26,6 +26,7 @@ use SchoolPalm\MessageDelivery\Notification\Contracts\ScheduleResolver;
 use SchoolPalm\MessageDelivery\Notification\Contracts\TemplateResolver;
 use SchoolPalm\MessageDelivery\Notification\Engine\NotificationEngine;
 use SchoolPalm\MessageDelivery\Notification\NotificationManager;
+use SchoolPalm\MessageDelivery\Notification\NotificationService;
 use SchoolPalm\MessageDelivery\Notification\Resolvers\NullChannelResolver;
 use SchoolPalm\MessageDelivery\Notification\Resolvers\NullEventResolver;
 use SchoolPalm\MessageDelivery\Notification\Resolvers\NullLanguageResolver;
@@ -282,7 +283,13 @@ final class MessageDeliveryServiceProvider extends ServiceProvider
                 engine: $app->make(NotificationEngineContract::class)
             )
         );
+
+        $this->app->singleton(
+    NotificationService::class,
+    fn () => new NotificationService()
+);
     }
+
 
 
     /**

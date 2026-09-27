@@ -14,36 +14,47 @@ return new class extends Migration
      * Creates the notifications table for storing in-app/database
      * notifications delivered through the In-App channel.
      *
-     * The table uses polymorphic notifiable columns so any
-     * application model (User, Parent, Teacher, Student, etc.)
-     * can receive notifications.
+     * The notification may optionally belong to an application
+     * context. The MessageDelivery package does not assume that
+     * the context represents a school, tenant, organisation, etc.
      */
     public function up(): void
     {
         Schema::create('notifications', function (Blueprint $table): void {
-    $table->uuid('id')->primary();
+            $table->uuid('id')->primary();
 
-    // Optional SchoolPalm context
-    $table->uuid('school_id')->nullable()->index();
+            /*
+             * Optional application context.
+             *
+             * MessageDelivery treats this as an opaque identifier.
+             * The host application decides what the context represents.
+             *
+             * In SchoolPalm, this will normally contain the current
+             * school context identifier.
+             */
+            $table->string('context_id')->nullable()->index();
 
-    $table->string('notifiable_type');
-    $table->string('notifiable_id');
-    $table->index(['notifiable_type', 'notifiable_id']);
+            $table->string('notifiable_type');
+            $table->string('notifiable_id');
 
-    $table->string('title');
-    $table->text('body')->nullable();
+            $table->index([
+                'notifiable_type',
+                'notifiable_id',
+            ]);
 
-    $table->json('data')->nullable();
+            $table->string('title');
+            $table->text('body')->nullable();
 
-    $table->string('channel')->nullable();
-    $table->string('provider')->nullable();
+            $table->json('data')->nullable();
 
-    $table->timestamp('read_at')->nullable();
+            $table->string('channel')->nullable();
+            $table->string('provider')->nullable();
 
-    $table->timestamps();
-});
+            $table->timestamp('read_at')->nullable();
+
+            $table->timestamps();
+        });
     }
-
 
     /**
      * Reverse the migrations.
@@ -53,4 +64,3 @@ return new class extends Migration
         Schema::dropIfExists('notifications');
     }
 };
-
